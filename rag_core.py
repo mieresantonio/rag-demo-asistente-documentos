@@ -7,6 +7,7 @@ fragmentos recuperados, no la genera un LLM).
 import json
 import os
 import re
+import unicodedata
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -37,6 +38,41 @@ OVERLAP_CHARS = 180    # solape entre fragmentos consecutivos de una sección
 # respuesta algo que puede no tener relación con la pregunta.
 UMBRAL_SIMILITUD = 0.30
 UMBRAL_CLARO = 0.50
+
+# Reordenación híbrida acotada (calibrada el 2026-11-02, Ciclo 2):
+# la búsqueda semántica pura dejaba «¿Cómo se despliega una
+# aplicación?» sin ningún fragmento de despliegue.md ni en el top-12
+# (su mejor fragmento puntuaba 0,371: el documento trata el despliegue
+# como doctrina —tarjetas, costes, runbook— y el embedding de cada
+# fragmento de ~900 caracteres diluye el tema). Por eso, sobre los
+# candidatos que ya superan el suelo semántico, se reordena sumando
+# una bonificación pequeña por coincidencia léxica de raíces entre la
+# pregunta y los metadatos del fragmento (archivo + sección, peso
+# 0,30) y su texto (peso 0,10). La `similitud` que se devuelve sigue
+# siendo la semántica pura, y la puerta de claridad (UMBRAL_CLARO) no
+# cambia: se aplica a la mejor similitud semántica de lo devuelto.
+PESO_TITULO = 0.30
+PESO_TEXTO = 0.10
+
+_PALABRAS_VACIAS = {
+    "como", "cual", "cuales", "que", "para", "una", "unos", "unas",
+    "del", "las", "los", "por", "con", "sin", "hace", "hoy", "cuando",
+    "donde", "desde", "entre", "sobre", "segun", "esto", "esta",
+    "este", "es",
+}
+
+
+def _raices(texto):
+    """Raíces léxicas simples: palabras de 4+ letras sin tildes ni
+    palabras vacías, recortadas a 6 caracteres («despliega»,
+    «despliegue» y «desplegar» comparten la raíz «despli»)."""
+    plano = unicodedata.normalize("NFKD", (texto or "").lower())
+    plano = "".join(c for c in plano if not unicodedata.combining(c))
+    return {
+        palabra[:6]
+        for palabra in re.findall(r"[a-z0-9]+", plano)
+        if len(palabra) >= 4 and palabra not in _PALABRAS_VACIAS
+    }
 
 
 # ---------------------------------------------------------------- troceado
@@ -101,8 +137,30 @@ def extract_pdf_pages(path):
     return pages
 
 
+def _doc_title_and_body(title, body):
+    """Separa la línea de encabezado del cuerpo de una sección Markdown.
+
+    El cuerpo que devuelve `split_markdown_sections` empieza por la
+    propia línea del encabezado; sin separarla, el troceado la aísla
+    en un fragmento de solo título (16 de 135 fragmentos en la ingesta
+    de 2026-11-02) y los demás fragmentos de la sección se quedan sin
+    ningún contexto de título al calcular su embedding.
+    """
+    lines = body.splitlines()
+    if lines and re.match(r"^#{1,4}\s+", lines[0]):
+        return "\n".join(lines[1:]).strip()
+    return body
+
+
 def collect_chunks(corpus_dirs):
-    """Lee .md/.pdf de las carpetas dadas y produce la lista de fragmentos."""
+    """Lee .md/.pdf de las carpetas dadas y produce la lista de fragmentos.
+
+    Cada fragmento Markdown lleva antepuestos el título del documento
+    y el de su sección: ese contexto forma parte del texto que se
+    vectoriza (y del fragmento citado), para que una pregunta sobre el
+    tema de una sección pueda recuperar también sus fragmentos segundo
+    y siguientes, no solo el primero.
+    """
     chunks = []
     documents = set()
     for folder in corpus_dirs:
@@ -115,19 +173,34 @@ def collect_chunks(corpus_dirs):
             lower = name.lower()
             if lower.endswith(".md"):
                 with open(path, encoding="utf-8") as fh:
-                    sections = split_markdown_sections(fh.read())
+                    raw = fh.read()
+                sections = split_markdown_sections(raw)
+                m = re.search(r"^#\s+(.+)", raw, flags=re.MULTILINE)
+                doc_title = m.group(1).strip() if m else None
             elif lower.endswith(".pdf"):
                 sections = extract_pdf_pages(path)
+                doc_title = None
             else:
                 continue
             rel = os.path.relpath(path, os.path.expanduser("~/workspace"))
             documents.add(rel)
             for title, body in sections:
+                if lower.endswith(".md"):
+                    body = _doc_title_and_body(title, body)
+                    encabezado = []
+                    if doc_title and doc_title != title:
+                        encabezado.append(doc_title)
+                    if title and title != "(sin título)":
+                        encabezado.append(title)
+                    prefijo = "\n".join(encabezado)
+                else:
+                    prefijo = ""
                 for piece in chunk_text(body):
+                    texto = (prefijo + "\n\n" + piece) if prefijo else piece
                     chunks.append({
                         "archivo": rel,
                         "seccion": title,
-                        "texto": piece,
+                        "texto": texto,
                     })
     return chunks, sorted(documents)
 
@@ -196,6 +269,24 @@ class RagStore:
     def ready(self):
         return self.index is not None and bool(self.chunks)
 
+    @property
+    def model_loaded(self):
+        return self.model is not None
+
+    def warmup(self):
+        """Carga el modelo de embeddings y lo deja listo para buscar.
+
+        Sin esto, el modelo se carga perezosamente en la primera
+        pregunta y esa primera respuesta paga toda la carga (~26 s
+        medidos en la primera búsqueda en frío, 2026-11-02) mientras
+        `/api/health` ya decía «ok». Devuelve True si el modelo quedó
+        cargado.
+        """
+        if not self.ready:
+            return False
+        self._embed("calentamiento del modelo")
+        return self.model_loaded
+
     def _embed(self, text):
         if self.model is None:
             self.model = load_model()
@@ -204,20 +295,54 @@ class RagStore:
         return np.asarray(vec, dtype="float32")
 
     def search(self, question, k=4, min_score=UMBRAL_SIMILITUD):
-        """Recupera los k fragmentos más parecidos (similitud coseno)."""
+        """Recupera los k fragmentos más relevantes para la pregunta.
+
+        Primero manda la similitud semántica (coseno): solo los
+        fragmentos que superan `min_score` son candidatos. Después se
+        reordenan con la bonificación léxica acotada de PESO_TITULO /
+        PESO_TEXTO (ver la nota junto a las constantes). La búsqueda
+        en el índice pide todos los fragmentos: con un corpus de demo
+        es barato, y un candidato con similitud modesta pero título
+        exactamente del tema preguntado debe poder entrar en la
+        reordenación (con un top-k semántico pequeño quedaba fuera).
+        """
         if not self.ready:
             return []
         vec = self._embed(question)
-        scores, ids = self.index.search(vec, k)
-        results = []
+        scores, ids = self.index.search(vec, self.index.ntotal)
+        raices_pregunta = _raices(question)
+        candidates = []
         for score, idx in zip(scores[0], ids[0]):
             if idx < 0 or score < min_score:
                 continue
             c = self.chunks[int(idx)]
+            if raices_pregunta:
+                en_titulo = len(raices_pregunta & _raices(
+                    c["archivo"] + " " + c["seccion"])) / len(raices_pregunta)
+                en_texto = len(raices_pregunta & _raices(
+                    c["texto"])) / len(raices_pregunta)
+            else:
+                en_titulo = en_texto = 0.0
+            relevancia = float(score) + PESO_TITULO * en_titulo \
+                + PESO_TEXTO * en_texto
+            candidates.append((relevancia, float(score), c))
+        candidates.sort(key=lambda item: (-item[0], -item[1]))
+        # Mejor similitud semántica de TODA la consulta (no solo de lo
+        # devuelto): es el dato de la puerta de claridad del Ciclo 1 y
+        # viaja en cada resultado para que la API lo lea sin recalcular.
+        similitud_maxima = max(
+            (score for _, score, _ in candidates), default=None)
+        results = []
+        for relevancia, score, c in candidates[:k]:
             results.append({
                 "archivo": c["archivo"],
                 "seccion": c["seccion"],
-                "similitud": round(float(score), 3),
+                "similitud": round(score, 3),
+                "relevancia": round(relevancia, 3),
+                "similitud_maxima": (
+                    round(similitud_maxima, 3)
+                    if similitud_maxima is not None else None
+                ),
                 "fragmento": c["texto"],
             })
         return results

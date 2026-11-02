@@ -23,6 +23,17 @@ python3 -m venv .venv
 .venv/bin/python app.py        # API en http://127.0.0.1:5057
 ```
 
+El arranque de `app.py` no es instantáneo: antes de aceptar peticiones
+carga el modelo de embeddings en memoria (medido el 2026-11-02:
+~24 s de carga del modelo, ~25 s en total hasta que la API responde).
+Ese es el precio que antes pagaba la primera pregunta en silencio;
+ahora forma parte del arranque y la primera pregunta responde en
+menos de un segundo. `/api/health` refleja el estado real:
+`estado: "ok"` solo con el modelo ya cargado (`modelo_cargado: true`);
+si la app se sirve por otra vía sin ese arranque en caliente, dirá
+`"calentando"` hasta la primera búsqueda, y `"sin_indice"` si todavía
+no se ha ejecutado la ingesta.
+
 Probar:
 
 ```bash
@@ -59,7 +70,9 @@ una sección por página).
 documentos (.md/.pdf)
       │  ingest.py
       ▼
-troceado por secciones → fragmentos de ~900 caracteres con solape de ~180
+troceado por secciones → fragmentos de ~900 caracteres con solape de
+~180, cada uno con el título del documento y el de su sección
+antepuestos (ese contexto también se vectoriza y se cita)
       │
       ▼
 embeddings locales — sentence-transformers
@@ -71,10 +84,13 @@ embeddings locales — sentence-transformers
       │
       │  POST /preguntar
       ▼
-la pregunta se vectoriza con el mismo modelo → se recuperan los k=4
-fragmentos más parecidos (suelo mínimo de similitud 0,30; si ni el mejor
-fragmento llega a 0,50, la API responde «sin resultados claros» y no
-devuelve fuentes — ver «Límites honestos»)
+la pregunta se vectoriza con el mismo modelo → candidatos sobre el
+suelo mínimo de similitud semántica 0,30, reordenados por relevancia
+híbrida (la similitud más una bonificación léxica acotada por
+coincidencia de raíces con el archivo, la sección y el texto) → k=4
+fragmentos; si la mejor similitud semántica de la consulta no llega
+a 0,50, la API responde «sin resultados claros» y no devuelve
+fuentes — ver «Límites honestos»
       │
       ▼
 respuesta extractiva: los fragmentos, ordenados por relevancia y citados
@@ -98,16 +114,30 @@ Piezas:
   varios documentos.
 - **Calidad ligada al corpus**: con 12 documentos pequeños, una pregunta
   fuera de tema no debe rellenar la respuesta. La política está calibrada
-  con pruebas reales sobre este corpus (2026-11-02): ningún fragmento por
-  debajo de 0,30 entra nunca, y si la mejor similitud de la consulta queda
-  por debajo de 0,50 la API responde «sin resultados claros en tus
-  documentos», con `confianza: "baja"` y `fuentes` vacía. En las pruebas,
-  las preguntas dentro de tema puntuaron 0,44–0,74 y las de fuera de tema
-  o de texto basura 0,41–0,46: la zona 0,44–0,50 se solapa, así que se
-  trata como «no clara» y puede tocar reformular alguna pregunta legítima
-  mal planteada. La calibración tampoco es perfecta: un texto de relleno
-  en latín (lorem ipsum) alcanzó 0,52 en las pruebas y se cuela como
-  «claro»; ningún umbral único separa limpiamente con este modelo pequeño.
+  con pruebas reales sobre este corpus (2026-11-02, recalculada en el
+  Ciclo 2 tras el troceado con títulos y la reordenación híbrida):
+  ningún fragmento por debajo de 0,30 entra nunca, y si la mejor
+  similitud semántica de la consulta queda por debajo de 0,50 la API
+  responde «sin resultados claros en tus documentos», con
+  `confianza: "baja"` y `fuentes` vacía. Similitudes semánticas máximas
+  medidas: dentro de tema, REA 0,526 · automatizaciones 0,697 ·
+  45 frente a 90 prompts 0,588 · diseño CenteIA 0,707 · agentes 0,736;
+  fuera de tema, la capital de Francia no devuelve ningún fragmento
+  ≥ 0,30, el clima 0,445, el texto basura 0,342 y un lorem ipsum 0,496
+  (esta vez bajo la puerta, pero por poco: en el Ciclo 1 llegó a 0,52
+  y se colaba como «claro»; el margen sigue siendo estrecho y ningún
+  umbral único separa limpiamente con este modelo pequeño).
+- **Caso especial, el despliegue**: «¿Cómo se despliega una
+  aplicación?» recupera `despliegue.md` en las posiciones 1–3, pero
+  hay que saber por qué: la similitud semántica pura de su mejor
+  fragmento es solo 0,371, porque el documento trata el despliegue
+  como doctrina (tarjetas, costes, runbook) y su vocabulario no
+  coincide con la pregunta. Lo rescata la reordenación híbrida (el
+  archivo y las secciones se llaman «despliegue»), y la puerta de
+  claridad se supera por la similitud máxima de la consulta (0,502,
+  de un fragmento de otro documento que además entra como cuarta
+  fuente sin ser del tema). La recuperación acierta; la composición
+  extractiva todavía puede arrastrar un fragmento vecino así.
 - **Búsqueda semántica, no exacta**: el modelo de embeddings es pequeño y
   multilingüe; nombres propios o siglas muy específicas pueden recuperar
   peor que una búsqueda por palabras clave.
@@ -121,7 +151,12 @@ Piezas:
    *después* de la recuperación: el modelo redactaría la respuesta usando
    solo los fragmentos recuperados, manteniendo las citas. La recuperación
    y las fuentes no cambian; solo cambia quién redacta.
-2. Búsqueda híbrida (semántica + palabras clave) para nombres y siglas.
+2. Búsqueda híbrida completa (p. ej. BM25 + semántica) para nombres y
+   siglas: hoy la recuperación ya reordena los candidatos semánticos
+   con una bonificación léxica acotada por coincidencia con el
+   archivo, la sección y el texto; un BM25 de verdad seguiría siendo
+   más robusto, sobre todo si el corpus crece (la reordenación actual
+   examina todos los fragmentos, viable a esta escala de demo).
 3. Re-troceado adaptativo y metadatos por página en PDF.
 4. Evaluación con un set fijo de preguntas/respuestas esperadas.
 5. Despliegue (p. ej. PythonAnywhere) y una interfaz web mínima de chat.

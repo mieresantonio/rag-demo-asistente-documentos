@@ -10,7 +10,10 @@ Endpoints:
 
 Arranque:
     python ingest.py   # primero, una vez (o cuando cambie el corpus)
-    python app.py      # sirve en http://127.0.0.1:5057
+    python app.py      # carga el modelo de embeddings y después sirve
+                       # en http://127.0.0.1:5057 (la carga forma parte
+                       # del arranque; /api/health dice «calentando»
+                       # mientras el modelo no esté listo)
 """
 from flask import Flask, jsonify, request
 
@@ -30,8 +33,19 @@ store = RagStore()
 
 @app.get("/api/health")
 def health():
+    # «ok» solo cuando se puede responder de verdad: índice presente Y
+    # modelo de embeddings ya cargado. Con el índice pero sin el modelo
+    # (p. ej. si la app se sirve sin pasar por el arranque de abajo), el
+    # estado honesto es «calentando», no «ok».
+    if not store.ready:
+        estado = "sin_indice"
+    elif store.model_loaded:
+        estado = "ok"
+    else:
+        estado = "calentando"
     return jsonify({
-        "estado": "ok" if store.ready else "sin_indice",
+        "estado": estado,
+        "modelo_cargado": store.model_loaded,
         "documentos": store.meta.get("documentos", 0),
         "fragmentos": store.meta.get("fragmentos", len(store.chunks)),
         "modelo_embeddings": store.meta.get("modelo", MODEL_NAME),
@@ -74,7 +88,12 @@ def preguntar():
     k = max(1, min(k, 8))
 
     results = store.search(pregunta, k=k)
-    similitud_maxima = results[0]["similitud"] if results else None
+    # La puerta de claridad mira la mejor similitud SEMÁNTICA de la
+    # consulta en todo el corpus (definición del Ciclo 1): los
+    # resultados vienen reordenados por relevancia híbrida, así que
+    # no es necesariamente la similitud del primer resultado; la
+    # búsqueda la adjunta a cada resultado como «similitud_maxima».
+    similitud_maxima = results[0]["similitud_maxima"] if results else None
     if similitud_maxima is None or similitud_maxima < UMBRAL_CLARO:
         # Honestidad ante la duda: sin un fragmento claramente parecido,
         # no se rellena la respuesta con fragmentos débiles.
@@ -113,4 +132,19 @@ def preguntar():
 
 
 if __name__ == "__main__":
+    # Arranque en caliente: el modelo se carga ANTES de aceptar
+    # peticiones, para que la primera pregunta no pague la carga
+    # perezosa (~26 s medidos en frío). El tiempo de carga se imprime
+    # y forma parte del arranque; /api/health no dirá «ok» hasta que
+    # el modelo esté listo (ver arriba).
+    import time
+
+    if store.ready:
+        t0 = time.time()
+        store.warmup()
+        print(
+            "Modelo de embeddings cargado en %.1f s; "
+            "la primera pregunta no pagará la carga." % (time.time() - t0),
+            flush=True,
+        )
     app.run(host="127.0.0.1", port=5057)
