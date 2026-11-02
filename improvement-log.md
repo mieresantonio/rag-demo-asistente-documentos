@@ -425,3 +425,121 @@
      (conteos 27/432 y calibración re-verificada) y este registro.
      Nota de publicación: `data/index.faiss` no se publica (binario);
      se regenera con `python ingest.py`.
+
+## 2026-11-02 · Fase 2, Ciclo 9 (tercer refresco del corpus: las entradas de los Ciclos 7 y 8)
+
+### Tercer refresco — seis copias al día: tres del Ciclo 7 y tres del Ciclo 8
+
+- **Objetivo:** tras la copia del Ciclo 7, varios registros recibieron
+  entradas nuevas de los Ciclos 7 y 8, así que sus copias en
+  `corpus-extra/` estaban desactualizadas respecto a los originales.
+  Este ciclo las refresca con el mismo mecanismo de los Ciclos 5 y 7,
+  sin tocar código.
+- **Refresco (`refresh_corpus_extra.py`, idempotente, con
+  verificación MD5 de cada copia contra su original):** cambiaron
+  **exactamente las seis copias esperadas** —comparación MD5 de toda
+  la carpeta contra el estado del Ciclo 7; las otras 9 copias
+  quedaron byte-idénticas y cada copia nueva coincide por MD5 con
+  su original—:
+  - `api-segundo-yo-improvement-log.md`: `9eb07f47…` → `848d8e2e…`
+    (Ciclo 7: documentación integrada — los errores 405 y 500 que
+    faltaban en el `DOCS_HTML` que sirve la propia app). Nota: esta
+    app SÍ forma parte de `corpus-extra/` —está en la lista
+    `SOURCES` del script desde el Ciclo 5—; lo que no tiene es un
+    corpus propio que ingerir, y eso no la excluye del refresco.
+  - `nft-studio-improvement-log.md`: `13b09e70…` → `8d0d698b…`
+    (Ciclo 7: suelo de tests de la capa de datos,
+    `scripts/verify-data.mjs` con 155 comprobaciones).
+  - `block-explorer-improvement-log.md`: `35d4bf4d…` → `5e701d51…`
+    (Ciclo 7: suelo de tests de la capa de datos,
+    `scripts/verify-data.mjs` con 157 comprobaciones).
+  - `gas-calc-improvement-log.md`: `6c830f1c…` → `263aead9…`
+    (Ciclo 8: suelo de tests para el cálculo de gas,
+    `scripts/verify-data.mjs` con 47 comprobaciones).
+  - `hash-lab-improvement-log.md`: `66a8cf83…` → `faf6350c…`
+    (Ciclo 8: suelo de tests para el hash y la mini-cadena,
+    `scripts/verify-data.mjs` con 54 comprobaciones).
+  - `mundo-vida-ia-improvement-log.md`: `5524cc17…` → `2e56bd99…`
+    (Ciclo 8: suite permanente con `unittest`, 20 tests en 6 clases
+    que fijan los invariantes de los Ciclos 1–5; en este registro la
+    entrada nueva va al principio, no al final).
+  Los seis cambios son añadidos puros de la sección de su ciclo
+  (verificado por `diff` contra las copias del Ciclo 7): ningún
+  original perdió ni alteró contenido previo, y no cambió ninguna
+  copia inesperada. La exclusión del registro propio del rag-demo
+  se mantiene, por el motivo documentado en el Ciclo 5
+  (autorreferencia).
+- **Re-ingesta:** mismos 27 documentos, **432 → 467 fragmentos**
+  (+35), con el delta explicado por archivo y solo por archivo
+  (verificado contra `data/chunks.json`): api-segundo-yo 23 → 28
+  (+5), block-explorer 22 → 26 (+4), nft-studio 25 → 30 (+5),
+  gas-calc 10 → 16 (+6), hash-lab 20 → 26 (+6), mundo-vida-ia
+  24 → 33 (+9); los fragmentos de los otros 21 archivos son
+  idénticos en número a los del Ciclo 7.
+- **Verificaciones (triple reforzada):**
+  1. `py_compile` limpio en `app.py`, `rag_core.py`, `ingest.py` y
+     `refresh_corpus_extra.py`.
+  2. Batería completa por la API real, con el servidor levantado
+     (modelo cargado en el arranque en 29,5 s): `/api/health` →
+     `estado: "ok"`, `modelo_cargado: true`, **27 documentos,
+     467 fragmentos**, coherentes con `data/meta.json`. Resultados,
+     todos con el patrón conocido-bueno de los Ciclos 5 y 7:
+     - REA → `ingenieria-inversa.md` en 1.ª posición, 0,526, alta.
+     - Automatizaciones → las 4 fuentes de
+       `automatizaciones-analisis.md`, máxima 0,699, alta.
+     - 45/90 → las 4 fuentes de `comparacion-prompts-45-vs-90.md`,
+       máxima 0,669, alta.
+     - Despliegue → `despliegue.md` en las posiciones **1–3**
+       (invariante crítico intacto), 4.ª fuente de `analisis.md`,
+       máxima 0,502, alta.
+     - Barbería (Ciclo 1) → las 4 fuentes de su registro en
+       `corpus-extra/`, máxima 0,557, alta (recuperación a nivel
+       de documento, como ya se documentó en el Ciclo 5).
+     - Tx-builder → posiciones 1–3 en su sección exacta (T-A1,
+       direcciones), máxima 0,522, alta; la 4.ª fuente sigue
+       siendo la sección del Ciclo 6 del mismo registro.
+     - Nft-studio (Ciclo 6) → las 4 fuentes son su registro,
+       máxima 0,570, alta; posiciones 1–2 en su sección exacta
+       (N-B8) y la 4.ª la sección «Pendiente» que ya daba la
+       máxima en el Ciclo 7. Matiz honesto: la 3.ª fuente es
+       ahora la sección nueva del Ciclo 7 (suelo de tests) del
+       mismo registro —contenido nuevo del documento correcto,
+       no una degradación—.
+     - Fuera de tema: capital de Francia → baja, sin fuentes
+       (ningún fragmento ≥ 0,30); clima → baja, máxima 0,320,
+       sin fuentes.
+     - NUEVA · Ciclo 8 («¿Qué tests se añadieron a mundo-vida-ia
+       en el Ciclo 8?») → las 4 fuentes son el registro de
+       mundo-vida-ia, las 4 en su sección exacta del Ciclo 8
+       («La suite — los invariantes de los ciclos 1-5…»),
+       máxima 0,562, alta, y la respuesta cita la suite
+       (`unittest`, 20 tests).
+     Sin degradación en ninguna pregunta: **no hizo falta
+     revertir** la re-ingesta. Servidor apagado al terminar
+     (puerto 5057 sin respuesta, comprobado).
+  3. Por contenido (V3): artefactos nuevos — `data/index.faiss`
+     `927ef91306ec7d766f65f482b536e19b`, `data/chunks.json`
+     `416b9ac777a24dbb02633ff12806f2e1`, `data/meta.json`
+     `a2652889734194e41b03e85817e36803` — frente a los del Ciclo 7
+     (`51893148…`, `cd09ca82…`, `5da6eb6b…`), con el delta
+     explicado solo por las seis copias actualizadas (suma de
+     fragmentos por archivo, arriba). El fragmento de tx-builder
+     con la dirección nueva de Ana (`0x48227ad1…4678`) de la
+     sección T-A1 sigue presente en `chunks.json`, idéntico al de
+     los Ciclos 5 y 7. Sin cambios en `rag_core.py` ni en
+     `app.py`: solo las seis copias de `corpus-extra/`, los
+     artefactos de `data/`, el README (conteos 27/467, calibración
+     re-verificada y la pregunta nueva del Ciclo 8) y este
+     registro. Nota de publicación: `data/index.faiss` no se
+     publica (binario); se regenera con `python ingest.py`.
+
+- **Lista para publicar (la publica el coordinador):**
+  `corpus-extra/api-segundo-yo-improvement-log.md`,
+  `corpus-extra/block-explorer-improvement-log.md`,
+  `corpus-extra/gas-calc-improvement-log.md`,
+  `corpus-extra/hash-lab-improvement-log.md`,
+  `corpus-extra/mundo-vida-ia-improvement-log.md`,
+  `corpus-extra/nft-studio-improvement-log.md`,
+  `data/chunks.json`, `data/meta.json`, `README.md` e
+  `improvement-log.md`. `data/index.faiss` NO viaja (binario; se
+  regenera con `python ingest.py`).

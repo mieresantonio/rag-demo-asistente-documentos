@@ -1,5 +1,108 @@
 # Registro de mejoras — mundo-vida-ia
 
+## 2026-11-02 · Fase 2, Ciclo 8 (suite de tests permanente)
+
+### La suite — los invariantes de los ciclos 1-5, fijados como regresión ejecutable
+
+- **Qué se creó:** paquete `tests/` nuevo, solo con la biblioteca
+  estándar (`unittest`): `tests/__init__.py` (docstring, sin imports
+  al cargarse, como el de `simulacion/`) y
+  `tests/test_invariantes.py` con 20 tests en 6 clases, cada una
+  nombrada por el comportamiento que fija. Se corre desde la raíz
+  del proyecto con un único comando, `python3 -m unittest discover`
+  (también funciona `python3 -m unittest discover -s tests`).
+  Sin dependencias nuevas y sin tocar el código de `simulacion/`.
+- **Qué fija cada clase:**
+  - `TestValidacionMotor` (Ciclo 1, MUNDO-A2): el constructor
+    rechaza lugares iniciales inválidos (`castillo_inventado`,
+    `narnia`, vacío, `PLAZA`) con `ValueError`; un lugar mutado tras
+    construir se rechaza en `agregar_agente()` y el agente no queda
+    registrado; `actuar()` rechaza la acción `volar` y la acción
+    ausente. Control positivo: los 5 lugares y las 6 acciones del
+    catálogo se aceptan y ejecutan, y `LUGARES_VALIDOS` de
+    `agente.py` coincide con `LUGARES` de `mundo.py`.
+  - `TestNombresDuplicados` (Ciclo 4, MUNDO-M3): un segundo agente
+    con un nombre ya registrado se rechaza con `ValueError`
+    («Nombre duplicado»), también al re-registrar el mismo objeto y
+    al duplicar un ejemplo cargado de `ejemplos/`; tras el rechazo
+    queda 1 solo agente, el índice sigue apuntando al primero,
+    `agentes_en()` lo devuelve una sola vez y el mundo sigue
+    corriendo ticks.
+  - `TestEjemplos`: los 3 JSON de `ejemplos/` cargan con el
+    constructor del protocolo, se agregan a un mundo (nombres
+    resolubles por `agente_por_nombre`) y el mundo corre 5 ticks.
+  - `TestDeterminismo` (Ciclos 3-5): dos generaciones en proceso
+    del registro (mismos pasos que `demo.main()`: `crear_agentes`,
+    semilla 42, 30 ticks, `construir_registro`) son byte a byte
+    idénticas; el registro generado coincide con el conocido-bueno
+    (MD5, 375 eventos, distribución y recuerdos por agente, abajo);
+    y los dos archivos versionados, `registro.json` y
+    `visor/registro.json`, son byte a byte ese mismo registro.
+  - `TestDemoComoPrograma` (Ciclo 1, MUNDO-A1 + Ciclos 4-5): en
+    copias temporales del proyecto, la demo como script
+    (`simulacion/demo.py`) lanzada desde un directorio de trabajo
+    distinto escribe en su propia copia —raíz y `visor/`— y nada en
+    el directorio de lanzamiento; la demo como módulo
+    (`python3 -m simulacion.demo`) desde la raíz de otra copia
+    produce el mismo registro; ambas vías dan bytes idénticos con
+    el MD5 conocido-bueno y la consola trae el resumen
+    «Ticks: 30 | Diálogos: 70 | Eventos de caos: 11» acentuado.
+  - `TestTextosAcentuados` (Ciclo 2): sobre los textos del registro
+    generado (eventos + recuerdos + metas), las formas acentuadas
+    aparecen con sus conteos conocido-buenos y las formas sin tilde
+    objetivo aparecen 0 veces; los 150 pensamientos llevan la
+    plantilla acentuada («Así que voy a…», «energía es»).
+- **Cifras, verificadas de primera mano en esta sesión antes de
+  escribir ningún test:** el estado actual NO cambió legítimamente
+  respecto al Ciclo 4/5 — la demo ejecutada en el proyecto y dos
+  generaciones en proceso dan MD5
+  `b56a5a928fcf5a2722665c8251a5aa7b` (144 419 bytes, idéntico en
+  raíz y en `visor/`), 375 eventos (150 pensamiento · 80 acción ·
+  70 diálogo · 64 crecimiento · 11 caos), recuerdos por agente
+  Lia 45 · Tomas 39 · Nara 44 · Rui 41 · Mara 42 y, en los textos,
+  `energía` ×335, `Así que` ×230, `compañía` ×53, `últimamente`
+  ×30, con las formas sin tilde ×0. Esas son las cifras que la
+  suite fija; el docstring de la suite dice cómo actualizarlas si
+  un cambio legítimo las mueve (regenerar, medir ejecutando y
+  documentar aquí).
+- **README:** añadida una sola línea veraz en «Cómo correrlo» con
+  el comando de la suite y su conteo (20 tests); el resto del
+  README, verificado veraz en el Ciclo 5, no se tocó.
+- **Verificaciones (triple, reforzada):**
+  1. V1 — La suite pasa completa en el proyecto real: 20 tests,
+     `OK`, por las dos invocaciones (`discover` y `discover
+     -s tests`); y tras correrla, `demo.py` en el proyecto sigue
+     generando el registro conocido-bueno (MD5
+     `b56a5a928fcf5a2722665c8251a5aa7b` en raíz y en `visor/`).
+  2. V2 — Prueba de fuego en copias desechables en `/tmp`: en la
+     copia 1 se eliminó la guarda de nombres duplicados de
+     `mundo.py` y la suite falló nombrando el problema —`FAILED
+     (failures=4)`, los 4 tests de `TestNombresDuplicados`, con
+     `AssertionError: ValueError not raised`—; en la copia 2 se
+     eliminó la guarda de lugar inicial del constructor de
+     `agente.py` y falló solo
+     `test_lugar_inicial_invalido_rechazado_en_el_constructor`,
+     con un subTest por cada lugar inválido. Ambas copias se
+     destruyeron y el proyecto real quedó intacto: guardas
+     presentes en su sitio, MD5 sin cambio y suite de nuevo en
+     verde (20/20).
+  3. V3 — Revisión de rutas y procedencia: la suite importa
+     `Agente`, `Mundo`, `crear_agentes` y `construir_registro` de
+     `simulacion.{agente,mundo,demo}` y las rutas resueltas
+     (`inspect.getsourcefile`) son los archivos reales de este
+     proyecto; la raíz se calcula desde la ubicación del propio
+     test, así que sobre una copia importa el código de la copia
+     —demostrado en V2: romper el código de la copia es lo que
+     hizo fallar su suite—. Sin mocks ni sustitutos: cada test
+     ejecuta el motor, la demo (en proceso o como subproceso) o
+     lee los archivos reales. Imports solo de la biblioteca
+     estándar (`hashlib`, `json`, `os`, `shutil`, `subprocess`,
+     `sys`, `tempfile`, `unittest`) más el paquete `simulacion`
+     del proyecto; `py_compile` limpio en los dos archivos de
+     `tests/`. Los `__pycache__` generados por las comprobaciones
+     se eliminaron al terminar. Nada se subió a GitHub en este
+     ciclo: publica el coordinador.
+
 ## 2026-11-02 · Fase 2, Ciclo 4 (medias estructurales M-M3 y M-M4 de la revisión 2026-11-02)
 
 ### MUNDO-M3 — Nombres duplicados corrompían el índice por nombre

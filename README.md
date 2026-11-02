@@ -60,10 +60,11 @@ con `estado: "sin_indice"`.
 ## Corpus
 
 Documentos propios de Antonio, ya existentes en su workspace
-(**27 documentos, 432 fragmentos** en la ingesta del Ciclo 7,
-2026-11-02; el Ciclo 5 dejó 409: el segundo refresco suma los
-fragmentos de las entradas del Ciclo 6 de nft-studio, tx-builder y
-block-explorer, +7, +6 y +10 respectivamente):
+(**27 documentos, 467 fragmentos** en la ingesta del Ciclo 9,
+2026-11-02; el Ciclo 7 dejó 432: el tercer refresco suma los
+fragmentos de las entradas de los Ciclos 7 y 8 de api-segundo-yo,
+block-explorer y nft-studio —Ciclo 7— y de gas-calc, hash-lab y
+mundo-vida-ia —Ciclo 8—, +5, +4, +5, +6, +6 y +9 respectivamente):
 
 - `centeia-materiales/` — análisis y evaluaciones de los materiales del
   curso «Tu segundo yo 24/7» (CenteIA). *(12 documentos entre esta
@@ -146,18 +147,20 @@ Piezas:
   fuera de tema no debe rellenar la respuesta. La política está calibrada
   con pruebas reales sobre este corpus (2026-11-02, recalculada en el
   Ciclo 2 tras el troceado con títulos y la reordenación híbrida,
-  re-verificada en el Ciclo 5 sobre el corpus ampliado y de nuevo en
-  el Ciclo 7 tras el segundo refresco):
+  re-verificada en el Ciclo 5 sobre el corpus ampliado, de nuevo en
+  el Ciclo 7 tras el segundo refresco y en el Ciclo 9 tras el
+  tercero):
   ningún fragmento por debajo de 0,30 entra nunca, y si la mejor
   similitud semántica de la consulta queda por debajo de 0,50 la API
   responde «sin resultados claros en tus documentos», con
   `confianza: "baja"` y `fuentes` vacía. Similitudes semánticas máximas
-  medidas en el Ciclo 5 y reproducidas idénticas en el Ciclo 7:
+  medidas en el Ciclo 5 y reproducidas idénticas en los Ciclos 7 y 9:
   dentro de tema, REA 0,526 · automatizaciones
   0,699 · 45 frente a 90 prompts 0,669 · barbería (Ciclo 1) 0,557 ·
   direcciones de tx-builder 0,522 · despliegue 0,502 (ver el caso
   especial de abajo) · versiones de nft-studio (Ciclo 6, pregunta
-  nueva del Ciclo 7) 0,570; fuera de tema, la capital de Francia no devuelve
+  nueva del Ciclo 7) 0,570 · tests de mundo-vida-ia (Ciclo 8, pregunta
+  nueva del Ciclo 9) 0,562; fuera de tema, la capital de Francia no devuelve
   ningún fragmento ≥ 0,30 y el clima 0,320. El margen sigue siendo
   estrecho (en el Ciclo 1, con otro corpus, un lorem ipsum llegó a
   0,52 y se colaba como «claro») y ningún umbral único separa
