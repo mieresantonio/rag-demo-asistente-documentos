@@ -33,9 +33,12 @@ curl -X POST http://127.0.0.1:5057/preguntar \
   -d '{"pregunta": "¿Qué es REA y para qué sirve?"}'
 ```
 
-La respuesta incluye `respuesta` (extractiva, con citas `[1]`, `[2]`…) y
+La respuesta incluye `respuesta` (extractiva, con citas `[1]`, `[2]`…),
 `fuentes`, la lista de fragmentos usados con su archivo, su sección y su
-similitud.
+similitud, y dos campos de control: `confianza` (`alta` o `baja`) y
+`similitud_maxima`. El campo `pregunta` debe ser una cadena de texto no
+vacía de como máximo 1000 caracteres; cualquier otro tipo de valor (un
+número, una lista, un campo ausente…) recibe un `400` con el error en JSON.
 
 ## Corpus inicial
 
@@ -69,7 +72,9 @@ embeddings locales — sentence-transformers
       │  POST /preguntar
       ▼
 la pregunta se vectoriza con el mismo modelo → se recuperan los k=4
-fragmentos más parecidos (umbral mínimo de similitud 0,20)
+fragmentos más parecidos (suelo mínimo de similitud 0,30; si ni el mejor
+fragmento llega a 0,50, la API responde «sin resultados claros» y no
+devuelve fuentes — ver «Límites honestos»)
       │
       ▼
 respuesta extractiva: los fragmentos, ordenados por relevancia y citados
@@ -92,8 +97,17 @@ Piezas:
   lo dice, no lo inventa — pero tampoco parafrasea ni conecta ideas de
   varios documentos.
 - **Calidad ligada al corpus**: con 12 documentos pequeños, una pregunta
-  fuera de tema devuelve fragmentos poco relevantes o ninguno (hay umbral de
-  similitud, y por debajo de él la API lo dice en vez de rellenar).
+  fuera de tema no debe rellenar la respuesta. La política está calibrada
+  con pruebas reales sobre este corpus (2026-11-02): ningún fragmento por
+  debajo de 0,30 entra nunca, y si la mejor similitud de la consulta queda
+  por debajo de 0,50 la API responde «sin resultados claros en tus
+  documentos», con `confianza: "baja"` y `fuentes` vacía. En las pruebas,
+  las preguntas dentro de tema puntuaron 0,44–0,74 y las de fuera de tema
+  o de texto basura 0,41–0,46: la zona 0,44–0,50 se solapa, así que se
+  trata como «no clara» y puede tocar reformular alguna pregunta legítima
+  mal planteada. La calibración tampoco es perfecta: un texto de relleno
+  en latín (lorem ipsum) alcanzó 0,52 en las pruebas y se cuela como
+  «claro»; ningún umbral único separa limpiamente con este modelo pequeño.
 - **Búsqueda semántica, no exacta**: el modelo de embeddings es pequeño y
   multilingüe; nombres propios o siglas muy específicas pueden recuperar
   peor que una búsqueda por palabras clave.

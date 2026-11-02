@@ -25,6 +25,19 @@ DEFAULT_CORPUS_DIRS = [
 CHUNK_CHARS = 900      # tamaño objetivo de cada fragmento
 OVERLAP_CHARS = 180    # solape entre fragmentos consecutivos de una sección
 
+# Política de similitud (calibrada con pruebas reales el 2026-11-02):
+# - UMBRAL_SIMILITUD es el suelo duro: ningún fragmento por debajo entra.
+# - UMBRAL_CLARO se aplica a la MEJOR similitud de la consulta: si ni el
+#   mejor fragmento lo alcanza, la API responde «sin resultados claros»
+#   y no devuelve fuentes, en vez de rellenar con fragmentos débiles.
+# Medido sobre el corpus actual (similitud máxima por consulta):
+# preguntas dentro de tema 0,44–0,74; fuera de tema y texto basura
+# 0,41–0,46. La zona 0,44–0,50 se solapa, por eso se trata como «no
+# clara»: es preferible pedir una reformulación que presentar como
+# respuesta algo que puede no tener relación con la pregunta.
+UMBRAL_SIMILITUD = 0.30
+UMBRAL_CLARO = 0.50
+
 
 # ---------------------------------------------------------------- troceado
 def split_markdown_sections(text):
@@ -190,7 +203,7 @@ class RagStore:
         vec = self.model.encode([text], normalize_embeddings=True)
         return np.asarray(vec, dtype="float32")
 
-    def search(self, question, k=4, min_score=0.20):
+    def search(self, question, k=4, min_score=UMBRAL_SIMILITUD):
         """Recupera los k fragmentos más parecidos (similitud coseno)."""
         if not self.ready:
             return []
@@ -208,6 +221,34 @@ class RagStore:
                 "fragmento": c["texto"],
             })
         return results
+
+
+def compose_sin_resultados_claros(similitud_maxima):
+    """Texto honesto cuando ningún fragmento supera el umbral claro.
+
+    Se usa cuando la mejor similitud queda por debajo de UMBRAL_CLARO:
+    la API lo dice explícitamente y no presenta fragmentos como si
+    fueran una respuesta.
+    """
+    def _num(valor, decimales=2):
+        return ("%.*f" % (decimales, valor)).replace(".", ",")
+
+    if similitud_maxima is None:
+        detalle = (
+            "Ningún fragmento alcanzó siquiera el umbral mínimo de %s."
+            % _num(UMBRAL_SIMILITUD)
+        )
+    else:
+        detalle = (
+            "La similitud máxima encontrada fue %s y el umbral de "
+            "claridad es %s." % (_num(similitud_maxima, 3), _num(UMBRAL_CLARO))
+        )
+    return (
+        "Sin resultados claros en tus documentos para esa pregunta. "
+        + detalle
+        + " Prueba reformularla con términos más cercanos al contenido "
+          "del corpus o amplía el corpus y vuelve a ejecutar la ingesta."
+    )
 
 
 def compose_answer(question, results):

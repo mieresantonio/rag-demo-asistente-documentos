@@ -4,6 +4,9 @@ Endpoints:
     GET  /api/health   -> estado y conteos (documentos, fragmentos)
     POST /preguntar    -> {"pregunta": "..."} devuelve respuesta extractiva
                           compuesta desde los fragmentos + fuentes citadas.
+                          "pregunta" debe ser una cadena de texto no vacía
+                          de como máximo MAX_PREGUNTA caracteres; cualquier
+                          otro tipo o valor recibe un 400 en JSON.
 
 Arranque:
     python ingest.py   # primero, una vez (o cuando cambie el corpus)
@@ -11,7 +14,15 @@ Arranque:
 """
 from flask import Flask, jsonify, request
 
-from rag_core import MODEL_NAME, RagStore, compose_answer
+from rag_core import (
+    MODEL_NAME,
+    UMBRAL_CLARO,
+    RagStore,
+    compose_answer,
+    compose_sin_resultados_claros,
+)
+
+MAX_PREGUNTA = 1000  # longitud máxima aceptada para el campo "pregunta"
 
 app = Flask(__name__)
 store = RagStore()
@@ -30,10 +41,28 @@ def health():
 
 @app.post("/preguntar")
 def preguntar():
-    data = request.get_json(silent=True) or {}
-    pregunta = (data.get("pregunta") or "").strip()
-    if not pregunta:
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({
+            "error": "El cuerpo debe ser un objeto JSON con el campo 'pregunta'."
+        }), 400
+    if "pregunta" not in data or data.get("pregunta") is None:
         return jsonify({"error": "Falta el campo 'pregunta'."}), 400
+    pregunta_raw = data.get("pregunta")
+    if not isinstance(pregunta_raw, str):
+        return jsonify({
+            "error": "El campo 'pregunta' debe ser una cadena de texto."
+        }), 400
+    pregunta = pregunta_raw.strip()
+    if not pregunta:
+        return jsonify({"error": "El campo 'pregunta' no puede estar vacío."}), 400
+    if len(pregunta) > MAX_PREGUNTA:
+        return jsonify({
+            "error": (
+                "La pregunta es demasiado larga: máximo %d caracteres."
+                % MAX_PREGUNTA
+            )
+        }), 400
     if not store.ready:
         return jsonify({
             "error": "El índice no existe todavía. Ejecuta primero: python ingest.py"
@@ -45,6 +74,21 @@ def preguntar():
     k = max(1, min(k, 8))
 
     results = store.search(pregunta, k=k)
+    similitud_maxima = results[0]["similitud"] if results else None
+    if similitud_maxima is None or similitud_maxima < UMBRAL_CLARO:
+        # Honestidad ante la duda: sin un fragmento claramente parecido,
+        # no se rellena la respuesta con fragmentos débiles.
+        return jsonify({
+            "pregunta": pregunta,
+            "tipo_respuesta": (
+                "extractiva — compuesta desde los fragmentos recuperados; "
+                "ningún LLM redactó esta respuesta"
+            ),
+            "respuesta": compose_sin_resultados_claros(similitud_maxima),
+            "fuentes": [],
+            "confianza": "baja",
+            "similitud_maxima": similitud_maxima,
+        })
     fuentes = [
         {
             "n": n,
@@ -63,6 +107,8 @@ def preguntar():
         ),
         "respuesta": compose_answer(pregunta, results),
         "fuentes": fuentes,
+        "confianza": "alta",
+        "similitud_maxima": similitud_maxima,
     })
 
 
