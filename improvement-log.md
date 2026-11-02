@@ -232,3 +232,110 @@
      «0,50») en los textos nuevos; README y comportamiento coinciden;
      la respuesta válida de REA conserva sus 4 fragmentos (el suelo
      0,30 no recorta el contexto útil) y no se detectaron regresiones.
+
+## 2026-11-02 · Fase 2, Ciclo 5 (refresco del corpus: los registros de mejora de la Fase 2)
+
+### Refresco del corpus — la demo ya responde también sobre el trabajo de mejora
+
+- **Objetivo:** el corpus eran 12 documentos (materiales CenteIA +
+  aprendido de mundo-dirsi). Este ciclo suma los `improvement-log.md`
+  de las apps mejoradas en la Fase 2, para que el proyecto de
+  portafolio responda también sobre ese trabajo.
+- **Mecanismo (sin re-arquitectura):** la ingesta ya aceptaba carpetas
+  a medida (`ingest.py carpeta1 carpeta2…`), pero solo lee el primer
+  nivel de cada carpeta y los 16 registros viven en carpetas distintas
+  con el mismo nombre de archivo. Solución: carpeta `corpus-extra/`
+  dentro del proyecto, generada por el script reproducible nuevo
+  **`refresh_corpus_extra.py`**: copia cada registro con un nombre por
+  app (`barberia-improvement-log.md`, `tx-builder-improvement-log.md`,
+  … —el nombre forma parte de los metadatos citados y de la
+  coincidencia léxica de títulos—), verifica cada copia por MD5 contra
+  su original y borra de la carpeta cualquier `.md` que ya no esté en
+  su lista (idempotente, sin acumulación manual). El README documenta
+  cómo se generó y cómo se refresca. Ingesta ejecutada con las tres
+  carpetas (las dos por defecto + `corpus-extra/`).
+- **Ajuste por degradación (medido, no a ciegas):** la primera
+  re-ingesta incluyó los 16 registros (28 documentos, 402 fragmentos)
+  y la batería detectó la regresión prevista: «¿Cómo se despliega una
+  aplicación?» bajó a despliegue.md a las posiciones 3–4, porque el
+  fragmento ganador pasaba a ser el del **propio registro del
+  rag-demo** —su sección RAG-M2 se titula literalmente con esa
+  pregunta y se llevaba la bonificación máxima de título (relevancia
+  0,77 frente a 0,57 de despliegue.md)—. Es un documento
+  autorreferente: indexarlo contamina la batería que él mismo
+  documenta. **Ajuste aplicado:** el registro propio queda EXCLUIDO
+  de `corpus-extra/` (decisión y motivo escritos en el propio script
+  y en el README); su trabajo se sigue contando en este registro,
+  solo no se auto-indexa. Re-ingesta final: **27 documentos,
+  409 fragmentos** (116 del corpus inicial + 293 de los 15 registros;
+  conteos por archivo verificados contra `data/chunks.json`).
+  Nota de proceso: entre la primera y la segunda copia, registros de
+  otras apps recibieron sus entradas del Ciclo 5 (trabajo concurrente
+  del coordinador, mtimes 22:28–22:30 UTC); la segunda copia los
+  recogió y una tercera ejecución del script confirmó «sin deriva»
+  (copias idénticas a los originales ingeridos).
+- **Verificaciones:**
+  1. `py_compile` limpio en `app.py`, `rag_core.py`, `ingest.py` y
+     `refresh_corpus_extra.py`.
+  2. Smoke real con el servidor levantado (modelo cargado en el
+     arranque en 23,5 s): `/api/health` → `estado: "ok"`,
+     `modelo_cargado: true`, **27 documentos, 409 fragmentos**,
+     coherentes con `data/meta.json` y con los documentos realmente
+     ingeridos. **Batería completa por la API:**
+     - REA («¿Qué es REA y para qué sirve?») → `ingenieria-inversa.md`
+       en 1.ª posición, similitud 0,526, `confianza: "alta"` —idéntica
+       a la del conocido-bueno—.
+     - Automatizaciones («¿Qué automatizaciones presenta la guía de
+       CenteIA y cómo se venden?») → las 4 fuentes de
+       `automatizaciones-analisis.md`, similitud máxima 0,699, alta.
+     - 45/90 («¿Los 45 prompts son un subconjunto de los 90
+       prompts?») → las 4 fuentes de
+       `comparacion-prompts-45-vs-90.md`, máxima 0,669, alta.
+     - Despliegue («¿Cómo se despliega una aplicación?») →
+       `despliegue.md` en las posiciones **1–3** (patrón exacto del
+       conocido-bueno de los Ciclos 2–3, con la 4.ª fuente de
+       `analisis.md` y máxima 0,502), alta. La degradación de la
+       primera re-ingesta quedó revertida con el ajuste de arriba.
+     - NUEVA · Barbería («¿Qué se arregló en el Ciclo 1 de la
+       barbería?») → las 4 fuentes son
+       `corpus-extra/barberia-improvement-log.md`, máxima 0,557,
+       alta. Matiz honesto (también en el README): la recuperación es
+       a nivel de documento; los fragmentos que encabezan son de
+       otras secciones del mismo registro (los arreglos del Ciclo 1
+       viven en secciones A1/A2/A3… sin la frase «Ciclo 1»).
+     - NUEVA · Tx-builder («¿Qué direcciones se cambiaron en
+       tx-builder?») → las 4 fuentes de
+       `corpus-extra/tx-builder-improvement-log.md`, posiciones 1–3
+       en su sección exacta (T-A1, direcciones canónicas), máxima
+       0,522, alta.
+     - Fuera de tema: capital de Francia → `confianza: "baja"`, sin
+       fuentes (ningún fragmento ≥ 0,30); clima («¿Qué tiempo hará
+       mañana?») → baja, máxima 0,320, sin fuentes. Ambos con el
+       texto «sin resultados claros».
+     Servidor apagado al terminar (puerto 5057 sin respuesta,
+     comprobado).
+  3. Por contenido (V3) y comparación contra conocidos-buenos: la
+     respuesta de tx-builder **cita el registro correcto y el
+     fragmento citado [1] contiene la dirección nueva de Ana**
+     (`0x48227ad1…4678`) de la sección T-A1; la de la barbería cita su
+     registro en las 4 fuentes. Artefactos: los MD5 nuevos
+     (`data/index.faiss` `94294e24d43bc9bb65f69d7692e84050`,
+     `data/chunks.json` `5a58d3e49f59aefab327d75fd948993d`,
+     `data/meta.json` `2a280426fda50d3f7dbf523ef8b78bd0`) difieren de
+     los de los Ciclos 2–3 (`08a10a58…`, `3574cc22…`, `4659fa03…`)
+     exactamente por la re-ingesta con 15 documentos más, verificado
+     por contenido (27 archivos en `meta.json`, 409 fragmentos que
+     suman por archivo: 116 originales + 293 nuevos). Sin cambios en
+     `rag_core.py` ni en `app.py` en este ciclo: solo corpus, script
+     de refresco, README y este registro.
+
+- **Cierre de ciclo (coordinación):** la auditoría de veracidad de
+  README del Ciclo 5 anotó sin corregir que el `503` de `/preguntar`
+  sin índice no estaba documentado (omisión, no afirmación falsa).
+  Corregido en el README: `/preguntar` responde `503` en JSON si el
+  índice no existe y `/api/health` lo refleja con
+  `estado: "sin_indice"` (comportamiento verificado en `app.py`).
+  Nota de publicación: `data/index.faiss` es binario y el conector de
+  GitHub solo admite instantáneas UTF-8, así que el índice no viaja en
+  el commit; se regenera con `python ingest.py` (chunks.json y
+  meta.json sí se publican).

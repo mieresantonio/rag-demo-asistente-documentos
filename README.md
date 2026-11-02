@@ -19,7 +19,9 @@ cd rag-demo
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-.venv/bin/python ingest.py     # ingesta: trocea, vectoriza e indexa
+.venv/bin/python refresh_corpus_extra.py   # corpus-extra/ al día (ver abajo)
+.venv/bin/python ingest.py ~/workspace/centeia-materiales \
+    ~/workspace/mundo-dirsi/aprendido ~/workspace/rag-demo/corpus-extra
 .venv/bin/python app.py        # API en http://127.0.0.1:5057
 ```
 
@@ -50,15 +52,41 @@ similitud, y dos campos de control: `confianza` (`alta` o `baja`) y
 `similitud_maxima`. El campo `pregunta` debe ser una cadena de texto no
 vacía de como máximo 1000 caracteres; cualquier otro tipo de valor (un
 número, una lista, un campo ausente…) recibe un `400` con el error en JSON.
+Si el índice aún no existe (todavía no se ha ejecutado la ingesta),
+`/preguntar` responde `503` con el error en JSON —«El índice no existe
+todavía. Ejecuta primero: python ingest.py»— y `/api/health` lo refleja
+con `estado: "sin_indice"`.
 
-## Corpus inicial
+## Corpus
 
-Documentos propios de Antonio, ya existentes en su workspace:
+Documentos propios de Antonio, ya existentes en su workspace
+(**27 documentos, 409 fragmentos** en la ingesta del Ciclo 5,
+2026-11-02):
 
 - `centeia-materiales/` — análisis y evaluaciones de los materiales del
-  curso «Tu segundo yo 24/7» (CenteIA).
+  curso «Tu segundo yo 24/7» (CenteIA). *(12 documentos entre esta
+  carpeta y la siguiente: el corpus inicial.)*
 - `mundo-dirsi/aprendido/` — notas de aprendizaje (agentes e IA, blockchain,
   despliegue, ingeniería inversa, portafolio y empleo…).
+- `corpus-extra/` — **desde el Ciclo 5**: los registros de mejora
+  (`improvement-log.md`) de las apps trabajadas en la Fase 2
+  (portfolio-apps ×3, la demo de barbería, web3-apps ×10 y
+  mundo-vida-ia), para que la demo también responda sobre ese trabajo:
+  qué se arregló en cada ciclo y por qué. Son **copias exactas** de los
+  originales, generadas por el script reproducible
+  `refresh_corpus_extra.py` (que verifica cada copia por MD5 y borra
+  las que ya no estén en su lista) con un nombre por app
+  (`barberia-improvement-log.md`, `tx-builder-improvement-log.md`, …):
+  la ingesta solo lee el primer nivel de cada carpeta y todos los
+  originales se llaman igual. Si un registro cambia en su app, se
+  vuelve a ejecutar el script y la ingesta.
+  - **Excluido a propósito:** el `improvement-log.md` del propio
+    rag-demo. Es autorreferente —su sección RAG-M2 se titula
+    literalmente con la pregunta de la batería «¿Cómo se despliega
+    una aplicación?»— y al ingerirlo desplazaba a `despliegue.md`
+    de las posiciones 1–3 a las 3–4 (medido en el Ciclo 5): el
+    refresco no puede empeorar lo que ya funcionaba, así que queda
+    fuera y el ajuste está documentado en el registro del proyecto.
 
 La ingesta acepta carpetas a medida: `python ingest.py carpeta1 carpeta2`.
 Formatos: Markdown (`.md`, troceado respetando encabezados) y PDF (`.pdf`,
@@ -112,21 +140,31 @@ Piezas:
   texto redactado. Responde «con las palabras del corpus»: si el corpus no
   lo dice, no lo inventa — pero tampoco parafrasea ni conecta ideas de
   varios documentos.
-- **Calidad ligada al corpus**: con 12 documentos pequeños, una pregunta
+- **Calidad ligada al corpus**: con 27 documentos pequeños, una pregunta
   fuera de tema no debe rellenar la respuesta. La política está calibrada
   con pruebas reales sobre este corpus (2026-11-02, recalculada en el
-  Ciclo 2 tras el troceado con títulos y la reordenación híbrida):
+  Ciclo 2 tras el troceado con títulos y la reordenación híbrida, y
+  re-verificada en el Ciclo 5 sobre el corpus ampliado):
   ningún fragmento por debajo de 0,30 entra nunca, y si la mejor
   similitud semántica de la consulta queda por debajo de 0,50 la API
   responde «sin resultados claros en tus documentos», con
   `confianza: "baja"` y `fuentes` vacía. Similitudes semánticas máximas
-  medidas: dentro de tema, REA 0,526 · automatizaciones 0,697 ·
-  45 frente a 90 prompts 0,588 · diseño CenteIA 0,707 · agentes 0,736;
-  fuera de tema, la capital de Francia no devuelve ningún fragmento
-  ≥ 0,30, el clima 0,445, el texto basura 0,342 y un lorem ipsum 0,496
-  (esta vez bajo la puerta, pero por poco: en el Ciclo 1 llegó a 0,52
-  y se colaba como «claro»; el margen sigue siendo estrecho y ningún
-  umbral único separa limpiamente con este modelo pequeño).
+  medidas en el Ciclo 5: dentro de tema, REA 0,526 · automatizaciones
+  0,699 · 45 frente a 90 prompts 0,669 · barbería (Ciclo 1) 0,557 ·
+  direcciones de tx-builder 0,522 · despliegue 0,502 (ver el caso
+  especial de abajo); fuera de tema, la capital de Francia no devuelve
+  ningún fragmento ≥ 0,30 y el clima 0,320. El margen sigue siendo
+  estrecho (en el Ciclo 1, con otro corpus, un lorem ipsum llegó a
+  0,52 y se colaba como «claro») y ningún umbral único separa
+  limpiamente con este modelo pequeño.
+- **Recuperación a nivel de documento, no siempre de sección**: la
+  pregunta «¿Qué se arregló en el Ciclo 1 de la barbería?» recupera el
+  registro correcto (sus 4 fuentes son la barbería), pero los
+  fragmentos que encabezan no son los de los arreglos del Ciclo 1:
+  en ese registro los arreglos viven en secciones tituladas por su
+  código (A1, A2, A3…) sin la frase «Ciclo 1», y la reordenación
+  premia otras secciones del mismo documento. La pregunta de
+  tx-builder sí encabeza con su sección exacta (T-A1, las direcciones).
 - **Caso especial, el despliegue**: «¿Cómo se despliega una
   aplicación?» recupera `despliegue.md` en las posiciones 1–3, pero
   hay que saber por qué: la similitud semántica pura de su mejor
