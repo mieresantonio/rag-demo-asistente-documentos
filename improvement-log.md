@@ -706,3 +706,173 @@
   `data/chunks.json`, `data/meta.json`, `README.md` e
   `improvement-log.md`. `data/index.faiss` NO viaja (binario; se
   regenera con `python ingest.py`).
+
+## 2026-11-02 · Fase 2, Ciclo 11 (quinto refresco del corpus: las entradas del Ciclo 10)
+
+### Quinto refresco — dos copias al día: el smoke de la barbería y el 10/10 de tx-builder
+
+- **Objetivo:** las entradas del Ciclo 10 de la barbería y de
+  tx-builder quedaron fuera del refresco del Ciclo 10 por
+  concurrencia (llegaron durante aquel ciclo, con mtimes
+  posteriores a su ingesta; así quedó documentado en su nota de
+  concurrencia). Este ciclo las incorpora con el mismo mecanismo
+  de los Ciclos 5, 7, 9 y 10, sin tocar código. Respaldo previo
+  del estado del Ciclo 10 (artefactos de `data/`, las 15 copias
+  de `corpus-extra/`, README y este registro) en
+  `/tmp/rag-demo-ciclo11-backup/`, antes de tocar nada.
+- **Refresco (`refresh_corpus_extra.py`, idempotente, con
+  verificación MD5 de cada copia contra su original):** cambiaron
+  **exactamente las dos copias esperadas** —contraste previo
+  copia↔original archivo a archivo y comparación MD5 de toda la
+  carpeta contra el estado del Ciclo 10; las otras 13 copias ya
+  coincidían con su original y quedaron byte-idénticas, y cada
+  copia nueva coincide por MD5 con su original—:
+  - `barberia-improvement-log.md`: `9e51b62d…` → `cdb05120…`
+    (Ciclo 10: smoke permanente `scripts/smoke.py` con 56
+    comprobaciones contra el backend real).
+  - `tx-builder-improvement-log.md`: `3d78a61b…` → `b96e9f43…`
+    (Ciclo 10: suelo de tests `scripts/verify-data.mjs` con 87
+    comprobaciones; era la única web3 sin suelo, así que con
+    esta entrada el conjunto web3 queda 10/10).
+  Los dos cambios son añadidos puros de la sección de su ciclo
+  al final de cada registro (verificado por `diff` contra las
+  copias del Ciclo 10 antes del refresco): ningún original
+  perdió ni alteró contenido previo, y no cambió ninguna copia
+  inesperada. La exclusión del registro propio del rag-demo se
+  mantiene, por el motivo documentado en el Ciclo 5
+  (autorreferencia).
+- **Re-ingesta:** mismos 27 documentos, **498 → 513 fragmentos**
+  (+15), con el delta explicado por archivo y solo por archivo
+  (verificado contra `data/chunks.json`): barbería 53 → 60 (+7),
+  tx-builder 18 → 26 (+8); los fragmentos de los otros 25
+  archivos son idénticos en número y en contenido a los del
+  Ciclo 10, y dentro de tx-builder los previos son un prefijo
+  exacto de los nuevos. Matiz de troceado en la barbería,
+  medido y explicado: 52 de sus 53 fragmentos previos están
+  verbatim en los nuevos y el último es un prefijo estricto del
+  nuevo correspondiente —solo crece 5 caracteres, el separador
+  «\n\n---» que precede a la sección nueva y queda adosado al
+  fragmento anterior—; no hay pérdida ni alteración de contenido.
+- **Verificaciones (triple reforzada):**
+  1. `py_compile` limpio en `app.py`, `rag_core.py`, `ingest.py` y
+     `refresh_corpus_extra.py`.
+  2. Batería completa por la API real, con el servidor levantado
+     (modelo cargado en el arranque en 21,5 s): `/api/health` →
+     `estado: "ok"`, `modelo_cargado: true`, **27 documentos,
+     513 fragmentos**, coherentes con `data/meta.json`. Resultados,
+     todos con el patrón conocido-bueno de los Ciclos 5, 7, 9 y 10:
+     - REA → `ingenieria-inversa.md` en 1.ª posición, 0,526, alta.
+     - Automatizaciones → las 4 fuentes de
+       `automatizaciones-analisis.md`, máxima 0,699, alta.
+     - 45/90 → las 4 fuentes de `comparacion-prompts-45-vs-90.md`,
+       máxima 0,669, alta.
+     - Despliegue → `despliegue.md` en las posiciones **1–3**
+       (invariante crítico intacto), 4.ª fuente de `analisis.md`,
+       máxima 0,502, alta.
+     - Barbería (Ciclo 1) → las 4 fuentes de su registro en
+       `corpus-extra/`, máxima 0,557, alta (recuperación a nivel
+       de documento, como ya se documentó en el Ciclo 5; la
+       sección nueva del Ciclo 10 entra entre las fuentes por
+       relevancia, sin desplazar la máxima).
+     - Tx-builder → posiciones 1–3 en su sección exacta (T-A1,
+       direcciones), máxima 0,522, alta; la 4.ª fuente sigue
+       siendo la sección del Ciclo 6 del mismo registro.
+     - Nft-studio (Ciclo 6) → máxima 0,570, alta, con las
+       posiciones 1–2 en su sección exacta (N-B8); la 3.ª sigue
+       siendo la sección del Ciclo 7 del mismo registro y la 4.ª
+       la del Ciclo 9 de anti-phishing, igual que en el Ciclo 10.
+     - Mundo-vida-ia (Ciclo 8) → las 4 fuentes son su registro,
+       las 4 en su sección exacta del Ciclo 8, máxima 0,562, alta.
+     - Fuera de tema: capital de Francia → baja, sin fuentes
+       (ningún fragmento ≥ 0,30); clima → baja, máxima 0,320,
+       sin fuentes.
+     - Oficiales del Ciclo 10, historia recuperada igual: «¿Qué
+       app web3 no tiene suelo de tests en el Ciclo 9?» → las 4
+       fuentes son el registro de anti-phishing en su sección
+       exacta del Ciclo 9, máxima 0,675, alta, y la respuesta [1]
+       contiene literal la explicación histórica (9 de 10 porque
+       tx-builder no tenía `scripts/` ni `test`): es la respuesta
+       del Ciclo 9 y se sigue recuperando igual, como historia,
+       no como presente. «¿Cuántas comprobaciones tiene el test
+       de anti-phishing?» → las 4 fuentes de su registro en la
+       misma sección, máxima 0,597, alta; la cifra —62
+       comprobaciones— está en los fragmentos completos de esa
+       sección (verificado en `data/chunks.json`), aunque la
+       composición extractiva no la encabeza, el mismo matiz ya
+       documentado en el Ciclo 10.
+     - NUEVA · Ciclo 10, barbería («¿Cuántas comprobaciones
+       tiene el smoke de la barbería?») → las 4 fuentes son su
+       registro, máxima 0,530, alta, con las fuentes 2 y 4 en su
+       sección exacta del Ciclo 10 («Smoke ejecutable — los
+       humos manuales de los Ciclos 1–3, fijados», 0,505), cuyo
+       fragmento completo contiene las 56 comprobaciones
+       (verificado en `data/chunks.json`); la máxima es de una
+       sección de regresión del mismo documento, no de la del
+       smoke: recuperación del documento correcto con la sección
+       exacta en el top-4.
+     - NUEVA · Ciclo 10, tx-builder: matiz honesto, medido y no
+       escondido, en la línea del anotado en el Ciclo 10 para su
+       propia formulación literal. Las dos formulaciones
+       genéricas ensayadas primero NO recuperan el registro de
+       tx-builder: «¿Qué app web3 completó el suelo de tests en
+       el Ciclo 10?» y «¿Cuántas comprobaciones tiene el test de
+       tx-builder?» traen las 4 fuentes del registro de
+       anti-phishing (máximas 0,673 y 0,650), cuya nota de conteo
+       del Ciclo 9 habla precisamente de tx-builder y compite
+       por esas palabras. La pregunta que funciona es la que
+       nombra el suelo y la app: «¿Qué suelo de tests se añadió
+       a tx-builder en el Ciclo 10?» → las 4 fuentes son el
+       registro de tx-builder, las 4 en su sección exacta del
+       Ciclo 10, máxima 0,674, alta, y la respuesta contiene el
+       10/10 y las 87 comprobaciones; también funciona «¿Qué se
+       hizo en tx-builder en el Ciclo 10?» (0,513, con 87 y
+       10/10 en la respuesta). Así quedan documentadas.
+     Sin degradación en ninguna pregunta de la batería previa:
+     **no hizo falta revertir** la re-ingesta. Servidor apagado
+     al terminar (puerto 5057 sin respuesta, comprobado).
+  3. Por contenido (V3): artefactos nuevos — `data/index.faiss`
+     `c149c69f411c00e453b5414d4e166efb`, `data/chunks.json`
+     `125903a77fc797d2244032c51d378912`, `data/meta.json`
+     `20ebca631fd2770a7e509d694569afee` — frente a los del
+     Ciclo 10 (`4853e88f…`, `79b732a6…`, `4a91622a…`), con el
+     delta explicado solo por las dos copias actualizadas (suma
+     de fragmentos por archivo, arriba), medidos por `md5sum`
+     directo sobre los artefactos ingeridos en esta sesión. El
+     fragmento de tx-builder con la dirección nueva de Ana
+     (`0x48227ad1…4678`) de la sección T-A1 sigue presente en
+     `chunks.json`, idéntico al de los Ciclos 5, 7, 9 y 10. Sin
+     cambios en `rag_core.py` ni en `app.py`: solo las dos
+     copias de `corpus-extra/`, los artefactos de `data/`, el
+     README (conteos 27/513 y calibración re-verificada, con las
+     preguntas nuevas del Ciclo 10 medidas) y este registro.
+     Nota de publicación: `data/index.faiss` no se publica
+     (binario); se regenera con `python ingest.py`.
+
+- **Nota de concurrencia (verificada y acotada, no escondida):**
+  tras la ingesta y la batería, la segunda ejecución de control
+  del script detectó que el original de la barbería había
+  recibido una entrada nueva DURANTE este ciclo (trabajo
+  concurrente del coordinador, mtime 23:24 UTC, posterior a la
+  copia ingerida): su entrada del **Ciclo 11** (verificación
+  cruzada frontend↔backend, `scripts/verify-catalog.py` con 20
+  comprobaciones), `cdb05120…` → `406fca2f…`. Verificado contra
+  su original: añadido puro al final —el contenido ingerido es
+  un prefijo byte-exacto de 35 996 bytes del original actual
+  (43 051)— y ningún fragmento de esa entrada está en el índice
+  (0 apariciones de `verify-catalog` en `data/chunks.json`).
+  **Decisión:** queda FUERA de este refresco —su alcance son las
+  entradas del Ciclo 10, y esta es del Ciclo 11: es material del
+  próximo refresco (Ciclo 12)— y la copia se restauró al estado
+  exacto ingerido (restauración probada por MD5: la copia vuelve
+  a ser `cdb05120…`), así que `corpus-extra/` y el índice quedan
+  en coherencia total (MD5 de las 15 copias = los de la ingesta
+  de este ciclo). Que conste para el coordinador: a fecha de
+  cierre de este ciclo ya existe la entrada del Ciclo 11 de la
+  barbería, aún sin ingerir.
+
+- **Lista para publicar (la publica el coordinador):**
+  `corpus-extra/barberia-improvement-log.md`,
+  `corpus-extra/tx-builder-improvement-log.md`,
+  `data/chunks.json`, `data/meta.json`, `README.md` e
+  `improvement-log.md`. `data/index.faiss` NO viaja (binario; se
+  regenera con `python ingest.py`).

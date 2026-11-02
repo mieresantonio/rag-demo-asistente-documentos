@@ -599,3 +599,86 @@ cerrado» (sin enmascarar) · `PRAGMA foreign_key_check` limpio ·
 BD restaurada al estado semilla y servidores apagados al
 terminar. Ortografía de los textos nuevos revisada («Ningún»,
 «válido», «entero»).
+
+---
+
+## 2026-11-02 — Fase 2, Ciclo 10 (smoke permanente)
+
+Respaldo previo propio de este ciclo:
+`/tmp/barberia.db.bak-ciclo10-20261102-231440` (md5
+`9ef7adf0815790b354074108797de3a2`, idéntico al de la BD real antes
+y después del ciclo). BD real verificada al terminar en su estado
+semilla (3 citas, ids 1–3, todas `cancelled`, 2026-10-27;
+`PRAGMA foreign_key_check` limpio; md5 sin cambios: el smoke nunca
+la abre). Servidores apagados al terminar (puertos 5000, 5117 y
+5118 libres, sin procesos residuales; directorios temporales de
+sonda, de humo y de la prueba de fuego destruidos).
+
+### Smoke ejecutable — los humos manuales de los Ciclos 1–3, fijados
+
+- **Cambio:** nuevo `scripts/smoke.py` (solo librería estándar,
+  patrón del smoke de `api-segundo-yo`: comprobaciones numeradas,
+  salida clara, código de salida 0/≠0, servidor que se apaga
+  siempre). **56 comprobaciones** contra el backend real:
+  salud/datos base, disponibilidad, errores 400 por campo en
+  disponibilidad, creación/solape/almuerzo/domingo/fecha pasada,
+  validación de tipos y formatos, filtro obligatorio del listado,
+  cancelación, reprogramación con integridad FK, errores JSON
+  404/405 provocados de verdad y CORS.
+- **Seguridad del propio smoke:** copia `backend/app.py` a un
+  directorio temporal en `/tmp` y lo arranca ahí (puerto 5117,
+  variable `PORT` si hace falta otro): la BD SQLite nace dentro
+  del temporal solo con profesionales y servicios semilla, sin
+  citas. La BD real del proyecto no se abre ni se toca, y el
+  temporal se destruye al terminar, pase o falle.
+- **Cifra de disponibilidad derivada en esta sesión (V3):** día
+  vacío → **30 inicios para Corte por profesional**, confirmados
+  por respuesta real y derivados del código: inicios posibles de
+  09:00 a 17:30 (último inicio = cierre 18:00 − 30 min de Corte)
+  en bloques de 15 min = 35; solapan el almuerzo 13:00–14:00 los
+  inicios 12:45, 13:00, 13:15, 13:30 y 13:45 = 5; 35 − 5 = **30**.
+  El 12:30 sí se ofrece (Corte termina 13:00). Se confirma lo que
+  el Ciclo 3 ya corrigió: los 31 del diagnóstico de Fase 1 eran la
+  cifra imprecisa. El resto de cifras y formas (201/400/404/405/
+  409, `{"error": ...}`, cabeceras CORS con y sin permiso) se
+  derivó igual: leídas del código y de respuestas reales de una
+  sonda previa en esta misma sesión, no de los logs.
+- **Alcance declarado dentro del propio script:** que el error de
+  cancelación se vea en el panel es tema de frontend (Ciclo 2,
+  M6) y queda fuera de este smoke de backend. **B6** (mismo
+  cliente, dos barberos, misma hora) y **B15** (atomicidad
+  anti-solape de producción) quedan fuera por decisión de
+  Antonio: el smoke los evita (clientes de ejemplo distintos por
+  reserva, solapes probados por profesional, peticiones
+  secuenciales) y no fija ningún comportamiento sobre ellos.
+- **README:** añadida solo la línea veraz de cómo correr el
+  smoke, junto a las instrucciones de ejecución; el resto del
+  README (incluidos los códigos 400/404/405/500/409 ya
+  documentados) no se tocó.
+
+### Triple verificación reforzada
+
+- **V1 (smoke + frontend):** `scripts/smoke.py` completo contra
+  el backend real con BD temporal: **56/56 PASS, salida 0**
+  (corrido dos veces en el ciclo, la última en el estado final).
+  `npm run build` OK y bundle comparado por contenido contra el
+  conocido-bueno vigente (Ciclo 4): JS `index-Dp2NaXmV.js`
+  165 225 B y CSS `index-M0X1mH2E.css` 11 894 B, **idénticos en
+  tamaño y en hash de nombre**; señales presentes
+  (`localhost:5000` ×2, «datos de ejemplo» ×7, `getFullYear`
+  presente, `toISOString` ausente, `#18753c` ×2, `#b93532` ×1,
+  `min-height:44px` ×2). Delta cero, como corresponde: este ciclo
+  no toca `frontend/src/`.
+- **V2 (prueba de fuego):** en una copia del proyecto en
+  `/tmp/barberia-fuego` se desactivó deliberadamente la
+  comprobación de solape en `validate_slot()` (solo en la copia)
+  y el smoke salió con **código 1 nombrando la comprobación
+  caída**: «✗ [20] solape mismo profesional y hora → 409 JSON
+  (actual: 201)», sin otros falsos positivos. Copia destruida;
+  el `backend/app.py` real conserva su md5
+  (`c0237416877fa36cffd6924e32a2b612`) de antes de la prueba.
+- **V3 (cifras desde el código y respuestas reales):** ver la
+  derivación de los 30 inicios arriba; cada código y forma de
+  error fijados se observó primero en la sonda de esta sesión
+  (incluidos el preflight CORS sin permiso para origen externo
+  y el 405 de `PUT /api/health` en JSON).

@@ -60,11 +60,11 @@ con `estado: "sin_indice"`.
 ## Corpus
 
 Documentos propios de Antonio, ya existentes en su workspace
-(**27 documentos, 498 fragmentos** en la ingesta del Ciclo 10,
-2026-11-02; el Ciclo 9 dejó 467: el cuarto refresco suma los
-fragmentos de las entradas del Ciclo 9 —suelo de tests— de
-wallet-sim, token-explorer, contract-play, dao-vote y
-anti-phishing, +5, +5, +7, +7 y +7 respectivamente):
+(**27 documentos, 513 fragmentos** en la ingesta del Ciclo 11,
+2026-11-02; el Ciclo 10 dejó 498: el quinto refresco suma los
+fragmentos de las entradas del Ciclo 10 de la barbería —smoke
+permanente, +7— y de tx-builder —suelo de tests, con el que el
+conjunto web3 queda 10/10, +8—):
 
 - `centeia-materiales/` — análisis y evaluaciones de los materiales del
   curso «Tu segundo yo 24/7» (CenteIA). *(12 documentos entre esta
@@ -149,13 +149,14 @@ Piezas:
   Ciclo 2 tras el troceado con títulos y la reordenación híbrida,
   re-verificada en el Ciclo 5 sobre el corpus ampliado, de nuevo en
   el Ciclo 7 tras el segundo refresco, en el Ciclo 9 tras el
-  tercero y en el Ciclo 10 tras el cuarto):
+  tercero, en el Ciclo 10 tras el cuarto y en el Ciclo 11 tras
+  el quinto):
   ningún fragmento por debajo de 0,30 entra nunca, y si la mejor
   similitud semántica de la consulta queda por debajo de 0,50 la API
   responde «sin resultados claros en tus documentos», con
   `confianza: "baja"` y `fuentes` vacía. Similitudes semánticas máximas
-  medidas en el Ciclo 5 y reproducidas idénticas en los Ciclos 7, 9
-  y 10:
+  medidas en el Ciclo 5 y reproducidas idénticas en los Ciclos 7, 9,
+  10 y 11:
   dentro de tema, REA 0,526 · automatizaciones
   0,699 · 45 frente a 90 prompts 0,669 · barbería (Ciclo 1) 0,557 ·
   direcciones de tx-builder 0,522 · despliegue 0,502 (ver el caso
@@ -164,7 +165,11 @@ Piezas:
   nueva del Ciclo 9) 0,562 · app web3 sin suelo de tests en el
   Ciclo 9 —tx-builder— (pregunta nueva del Ciclo 10) 0,675 ·
   comprobaciones del test de anti-phishing (Ciclo 9, también nueva
-  del Ciclo 10) 0,597; fuera de tema, la capital de Francia no devuelve
+  del Ciclo 10) 0,597 · suelo de tests de tx-builder (Ciclo 10,
+  pregunta nueva del Ciclo 11, con la formulación «¿Qué suelo de
+  tests se añadió a tx-builder en el Ciclo 10?») 0,674 · smoke de
+  la barbería (Ciclo 10, también nueva del Ciclo 11) 0,530; fuera
+  de tema, la capital de Francia no devuelve
   ningún fragmento ≥ 0,30 y el clima 0,320. El margen sigue siendo
   estrecho (en el Ciclo 1, con otro corpus, un lorem ipsum llegó a
   0,52 y se colaba como «claro») y ningún umbral único separa
