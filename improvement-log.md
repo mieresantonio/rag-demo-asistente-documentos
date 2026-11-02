@@ -1,5 +1,47 @@
 # Registro de mejoras — rag-demo
 
+## 2026-11-02 · Fase 2, Ciclo 3 (hallazgos MEDIA restantes de la revisión 2026-11-02)
+
+### RAG-M3 — `requirements.txt` con rangos abiertos y numpy sin declarar
+
+- **Hallazgo:** las cuatro dependencias iban con rangos abiertos
+  (`flask>=3.0`, `sentence-transformers>=3.0`, `faiss-cpu>=1.8`,
+  `pypdf>=4.0`): dos instalaciones en fechas distintas podían resolver
+  versiones distintas y la demo dejaba de ser reproducible. Además,
+  `rag_core.py` importa `numpy` directamente (en `build_index()` y en
+  `_embed()`) y no estaba declarado: llegaba solo como dependencia
+  transitiva de otros paquetes.
+- **Cambio:** `requirements.txt` fija con `==` las versiones reales
+  instaladas y verificadas en el `.venv` (consultadas con `pip show`):
+  `flask==3.1.3`, `sentence-transformers==6.2.0`, `faiss-cpu==1.15.1`,
+  `pypdf==6.21.4` y se declara `numpy==2.5.4`. Se mantiene la nota
+  sobre la build solo-CPU de PyTorch. No se tocó código: el límite de
+  longitud de la pregunta (máx. 1000, Ciclo 1) y el arranque en
+  caliente (Ciclo 2) no se reabrieron.
+- **Verificaciones:**
+  1. `py_compile` limpio en `app.py`, `rag_core.py` e `ingest.py`.
+  2. Smoke real con el servidor levantado: `/api/health` respondió
+     `estado: "ok"`, `modelo_cargado: true`, 12 documentos y
+     116 fragmentos; la carga del modelo en el arranque tardó esta
+     vez 38,9 s (más que los 24,1 s medidos en el Ciclo 2: varía con
+     la máquina, pero sigue pagándose en el arranque y no en la
+     pregunta). Batería idéntica al estado conocido-bueno del Ciclo 2:
+     despliegue → `despliegue.md` en las posiciones 1–3,
+     `confianza: "alta"`, similitud máxima 0,502 y primera pregunta
+     en 0,17 s; REA → `ingenieria-inversa.md` en 1.ª posición
+     (0,526, alta); 45 frente a 90 → `comparacion-prompts-45-vs-90.md`
+     con las 4 fuentes (0,588, alta); fuera de tema (capital de
+     Francia) → `confianza: "baja"`, sin fuentes. Servidor apagado al
+     terminar (puerto 5057 sin respuesta, comprobado).
+  3. Por contenido y comparación contra lo instalado: el archivo ya no
+     contiene ningún rango abierto en todo su texto; las cinco
+     fijaciones coinciden una a una con la versión instalada en el
+     `.venv` (comprobado vía `importlib.metadata`), `numpy` es
+     importable en el `.venv` (2.5.4) y `pip check` no reporta
+     requisitos rotos. Los artefactos del índice no cambiaron (MD5
+     `08a10a5845fcbbb662e67933d1fb7e38`, `3574cc228e222a3c876a95c4c2edbbea`
+     y `4659fa0322ea6b52f859d75b112e2bd2`, los del Ciclo 2).
+
 ## 2026-11-02 · Fase 2, Ciclo 2 (hallazgos MEDIA de la revisión 2026-11-02)
 
 ### RAG-M1 — Arranque en frío: la primera pregunta pagaba la carga del modelo

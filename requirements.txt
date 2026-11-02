@@ -1,8 +1,15 @@
+# Versiones fijadas (==) a las realmente instaladas y verificadas en el
+# entorno .venv el 2026-11-02. Antes iban con rangos abiertos: dos
+# instalaciones en fechas distintas podían resolver versiones distintas
+# y la demo dejaba de ser reproducible.
+# numpy se declara porque rag_core.py lo importa directamente; antes
+# llegaba solo como dependencia transitiva de otros paquetes.
 # Nota: sentence-transformers instala PyTorch (build estándar de PyPI).
 # En máquinas con poco espacio en /tmp o sin GPU, se puede instalar antes
 # la build solo-CPU, mucho más ligera, y pip la dará por satisfecha:
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
-flask>=3.0
-sentence-transformers>=3.0
-faiss-cpu>=1.8
-pypdf>=4.0
+flask==3.1.3
+sentence-transformers==6.2.0
+faiss-cpu==1.15.1
+pypdf==6.21.4
+numpy==2.5.4
