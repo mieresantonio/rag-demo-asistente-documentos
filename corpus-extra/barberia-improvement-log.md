@@ -682,3 +682,141 @@ sonda, de humo y de la prueba de fuego destruidos).
   error fijados se observó primero en la sonda de esta sesión
   (incluidos el preflight CORS sin permiso para origen externo
   y el 405 de `PUT /api/health` en JSON).
+
+---
+
+## 2026-11-02 — Fase 2, Ciclo 11 (verificación cruzada frontend↔backend)
+
+Respaldo previo propio de este ciclo:
+`/tmp/barberia.db.bak-ciclo11-20261102-232208` (md5
+`9ef7adf0815790b354074108797de3a2`, idéntico al de la BD real
+antes y después del ciclo). La verificación nueva es de solo
+lectura y sin servidor (la BD se abre con `mode=ro`); el smoke
+del Ciclo 10 corrió con su protocolo habitual de BD temporal.
+Servidores apagados al terminar (puertos 5000, 5117, 5118 y
+8899 libres; copia de la prueba de fuego destruida).
+
+### Inventario de constantes de catálogo del frontend (V3, leído de los archivos reales en esta sesión)
+
+**Por API en tiempo real — NO hay constante que cruzar:**
+
+- Servicios (nombre, duración, precio): `GET /api/services` en
+  `App.jsx:60` y `ChatWidget.jsx:60`; se pintan `s.name`,
+  `s.duration_min` y `s.price_example` del JSON (tarjetas
+  `App.jsx:185-190`, opciones del formulario `App.jsx:247-251`,
+  «Servicios» del chat `ChatWidget.jsx:121` y `:281`, choices
+  `ChatWidget.jsx:129`). Ningún precio literal `$<dígito>` en
+  todo `frontend/src/`.
+- Profesionales: `GET /api/professionals` en ambos componentes;
+  nombres pintados desde el JSON (select `App.jsx:262-266`,
+  «Profesionales:» de Ubicación `App.jsx:211`, choices del chat
+  `ChatWidget.jsx:154-156`). Los literales «Carlos»/«Luis» NO
+  aparecen en `frontend/src/` (0 coincidencias).
+- Conclusión: en servicios (salvo lo de abajo) y profesionales
+  no puede haber deriva: si el backend cambia un dato, la web
+  muestra el nuevo. Por eso el script fija la AUSENCIA como
+  comprobación: si alguien escribe a mano un precio o un nombre
+  de profesional en el frontend, el cruce falla y obliga a
+  revisar ese nuevo punto de deriva.
+
+**Constantes escritas a mano — SÍ comparables (y cruzadas):**
+
+- Horario, que vive en TRES sitios del frontend contra
+  `backend/app.py:37-41` (OPEN 09:00, CLOSE 18:00,
+  LUNCH_START/END 13:00/14:00, BLOCK 15) y el cierre de domingo
+  (`weekday() == 6` en `validate_slot`/`free_starts`/
+  `availability`):
+  - `frontend/src/schedule.js:6-10`: OPEN_TEXT `09:00`,
+    CLOSE_TEXT `18:00`, LUNCH_TEXT `13:00 – 14:00`, HOURS_TEXT
+    completo (lun–sáb 09:00–18:00, almuerzo 13:00–14:00,
+    domingos cerrados, bloques de 15). Nota: OPEN_TEXT y
+    CLOSE_TEXT están definidos pero hoy ningún componente los
+    importa (se consumen LUNCH_TEXT en `App.jsx:3` y HOURS_TEXT
+    en `ChatWidget.jsx:2`); se cruzan igual por ser la fuente
+    declarada del frontend (B17).
+  - `frontend/src/App.jsx:20-23` (`slotGrid`, funcionales):
+    bucle `h = 9; h < 18`, paso `m += 15`, almuerzo con
+    literales `'13:00'`/`'14:00'`.
+  - `frontend/src/App.jsx:199-202` (lista «Horarios», literales
+    que NO salen de schedule.js): «Lunes a sábado: 09:00 –
+    18:00», «Domingo: cerrado», «Citas en bloques de 15
+    minutos».
+- `App.jsx:203`: «La Barba dura 20 minutos…» — nombre y
+  duración de un servicio en prosa, contra la semilla
+  (Barba, 20 min).
+- `ChatWidget.jsx:352-355`: el texto libre del chat busca los
+  servicios por nombre exacto (`s.name === 'Corte + Barba'` /
+  `'Barba'` / `'Corte'`) y el mensaje guía de `:360` anuncia
+  los tres nombres: si el backend renombra un servicio, esta
+  interpretación se rompe en silencio — es constante comparable.
+  Las heurísticas `low.includes('corte'/'barba')` (`:280`,
+  `:351-355`) son subcadenas de esos mismos nombres: no se
+  fijan como igualdad porque degradan sobre la búsqueda por
+  nombre exacto, que sí se cruza.
+- Precios: la única copia fuera de la API es la BD real contra
+  la semilla de `app.py` — el script la incluye (nombre,
+  duración y **precio** por servicio), que es donde un precio
+  sí puede derivar (semilla editada sin resembrar).
+
+**Backend (fuente que la API sirve), `backend/app.py`:** seed
+`:107-118` — profesionales Carlos y Luis; servicios Corte
+30 min $8, Barba 20 min $5, Corte + Barba 45 min $12 (precios
+de ejemplo). Coincide con la BD real leída en solo lectura.
+
+### Cambio — `scripts/verify-catalog.py` permanente
+
+- **Nuevo script** (solo librería estándar, patrón del smoke):
+  extrae AMBOS lados de los archivos reales — backend por `ast`
+  (constantes `time(...)`, BLOCK, kwargs de `seed()` y el entero
+  de `weekday()`), frontend por patrones anclados a cada
+  constante inventariada, BD por sqlite en `mode=ro` — sin
+  copiar ningún dato del catálogo dentro del script como
+  tercera copia. **20 comprobaciones** numeradas; si un patrón
+  deja de encontrarse, falla nombrándolo («la constante cambió
+  de forma»), nunca pasa en silencio. Sin servidor, sin
+  escrituras. README: añadida solo la línea veraz de cómo
+  correrlo, junto a la del smoke.
+- **Deriva real hoy: NINGUNA.** Las 20 comprobaciones pasan con
+  los valores de arriba, idénticos en los dos lados (y en la
+  BD). No hubo nada que corregir en `src/` ni en `app.py`.
+
+### Triple verificación reforzada
+
+- **V1 (script + smoke + build):** `scripts/verify-catalog.py`
+  en el estado final: **20/20 PASS, salida 0**. Smoke del
+  Ciclo 10: **56/56 PASS, salida 0**, con la BD real intacta
+  (md5 `9ef7adf0815790b354074108797de3a2` antes y después; el
+  script nuevo tampoco la mueve: apertura `mode=ro`).
+  `npm run build` OK y bundle **idéntico** al conocido-bueno
+  vigente (Ciclo 4/10): JS `index-Dp2NaXmV.js` 165 225 B
+  (md5 `b864d911e7e36d2da444de10e25fb165`) y CSS
+  `index-M0X1mH2E.css` 11 894 B (md5
+  `75b8ff30116476f7696c99477bae5be2`); señales presentes
+  (`localhost:5000` ×2, «datos de ejemplo» ×7, `getFullYear`,
+  `toISOString` ausente, `#18753c` ×2, `#b93532` ×1,
+  `min-height:44px` ×2). Delta cero, como corresponde: este
+  ciclo no toca `frontend/src/` ni `backend/app.py` (md5 de
+  `app.py` intacto: `c0237416877fa36cffd6924e32a2b612`).
+- **V2 (prueba de fuego):** en una copia del proyecto en
+  `/tmp/barberia-catalogo-fuego` se introdujeron DOS derivas
+  deliberadas (solo en la copia): precio de Corte en la
+  semilla `price_example=8` → `10` y prosa del frontend «La
+  Barba dura 20» → `25` minutos. El script salió con **código
+  1 nombrando exactamente las dos**: «✗ [02] servicios BD
+  (Corte 30 min $8.0; …) == semilla (nombre, duración y
+  precio)» y «✗ [16] prosa «La Barba dura 25 minutos» ==
+  semilla (Barba: 20 min)», sin falsos positivos (las otras 18
+  siguieron en ✓). Copia destruida; los archivos reales
+  conservan sus md5 de antes de la prueba.
+- **V3 (datos desde los archivos reales):** todo el inventario
+  de arriba se leyó en esta sesión de `backend/app.py`,
+  `frontend/src/schedule.js`, `App.jsx`, `ChatWidget.jsx`,
+  `index.html` (sin datos de catálogo: solo la descripción
+  genérica de la demo) y la BD en solo lectura; las cifras del
+  cruce son las que el propio script imprime desde esos
+  archivos al correr, no copias de este log.
+
+### Fuera de alcance, sin tocar
+
+- B6 y B15 (decisiones de Antonio, Ciclo 3). Ninguna otra app,
+  ni el informe maestro, ni GitHub. Sin `.env` ni credenciales.
