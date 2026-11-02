@@ -339,3 +339,89 @@
   GitHub solo admite instantáneas UTF-8, así que el índice no viaja en
   el commit; se regenera con `python ingest.py` (chunks.json y
   meta.json sí se publican).
+
+## 2026-11-02 · Fase 2, Ciclo 7 (segundo refresco del corpus: las entradas del Ciclo 6)
+
+### Segundo refresco — las copias de nft-studio, tx-builder y block-explorer al día
+
+- **Objetivo:** tras la copia del Ciclo 5, los registros de
+  nft-studio, tx-builder y block-explorer recibieron sus entradas del
+  Ciclo 6 (alineaciones de versiones y bajas E-B2/B4/B7), así que sus
+  copias en `corpus-extra/` estaban desactualizadas respecto a los
+  originales. Este ciclo las refresca con el mismo mecanismo del
+  Ciclo 5, sin tocar código.
+- **Refresco (`refresh_corpus_extra.py`, idempotente, con
+  verificación MD5 de cada copia contra su original):** cambiaron
+  **exactamente las tres copias esperadas** —comparación MD5 de toda
+  la carpeta contra el estado del Ciclo 5, las otras 12 copias
+  quedaron byte-idénticas—:
+  - `nft-studio-improvement-log.md`: `71bb67da…` → `13b09e70…`
+    (entrada N-B8: alineación a React 18.3.1 / Vite 6.4.5).
+  - `tx-builder-improvement-log.md`: `defe7bab…` → `3d78a61b…`
+    (alineación de Vite 5.4.21 → 6.4.5, GR-2).
+  - `block-explorer-improvement-log.md`: `5fd1de92…` → `35d4bf4d…`
+    (bajas E-B2, E-B4 y E-B7).
+  La exclusión del registro propio del rag-demo se mantiene, por el
+  motivo documentado en el Ciclo 5 (autorreferencia).
+- **Re-ingesta:** mismos 27 documentos, **409 → 432 fragmentos**
+  (+23), con el delta explicado por archivo y solo por archivo
+  (verificado contra `data/chunks.json`): block-explorer 12 → 22
+  (+10), nft-studio 18 → 25 (+7), tx-builder 12 → 18 (+6); los
+  fragmentos de los otros 24 archivos son idénticos a los del
+  Ciclo 5, y dentro de los tres archivos actualizados los fragmentos
+  previos también son idénticos: los nuevos son solo las secciones
+  del Ciclo 6 añadidas al final de cada registro.
+- **Verificaciones (triple reforzada):**
+  1. `py_compile` limpio en `app.py`, `rag_core.py`, `ingest.py` y
+     `refresh_corpus_extra.py`.
+  2. Batería completa por la API real, con el servidor levantado
+     (modelo cargado en el arranque en 24,5 s): `/api/health` →
+     `estado: "ok"`, `modelo_cargado: true`, **27 documentos,
+     432 fragmentos**, coherentes con `data/meta.json`. Resultados,
+     todos con el patrón conocido-bueno del Ciclo 5:
+     - REA → `ingenieria-inversa.md` en 1.ª posición, 0,526, alta.
+     - Automatizaciones → las 4 fuentes de
+       `automatizaciones-analisis.md`, máxima 0,699, alta.
+     - 45/90 → las 4 fuentes de `comparacion-prompts-45-vs-90.md`,
+       máxima 0,669, alta.
+     - Despliegue → `despliegue.md` en las posiciones **1–3**
+       (invariante crítico intacto), 4.ª fuente de `analisis.md`,
+       máxima 0,502, alta.
+     - Barbería (Ciclo 1) → las 4 fuentes de su registro en
+       `corpus-extra/`, máxima 0,557, alta (recuperación a nivel de
+       documento, como ya se documentó en el Ciclo 5).
+     - Tx-builder → posiciones 1–3 en su sección exacta (T-A1,
+       direcciones), máxima 0,522, alta; la 4.ª fuente es ahora la
+       sección nueva del Ciclo 6 del mismo registro (esperado: es
+       contenido nuevo del documento correcto, no una degradación).
+     - Fuera de tema: capital de Francia → baja, sin fuentes
+       (ningún fragmento ≥ 0,30); clima → baja, máxima 0,320, sin
+       fuentes.
+     - NUEVA · Ciclo 6 («¿A qué versiones se alineó nft-studio en
+       el Ciclo 6?») → las 4 fuentes son el registro de nft-studio,
+       posiciones 1, 2 y 4 en su sección exacta del Ciclo 6 (N-B8),
+       máxima 0,570, alta, y la respuesta contiene las versiones
+       alineadas (react/react-dom 18.3.1, vite 6.4.5,
+       plugin-react 4.7.0, lucide-react 0.469.0). Matiz honesto: la
+       3.ª fuente es la sección «Pendiente» del mismo registro, que
+       mencionaba N-B8 como pendiente en un ciclo anterior; la
+       recuperación es del documento correcto.
+     Sin degradación en ninguna pregunta: **no hizo falta revertir**
+     la re-ingesta. Servidor apagado al terminar (puerto 5057 sin
+     respuesta, comprobado).
+  3. Por contenido (V3): artefactos nuevos — `data/index.faiss`
+     `51893148864f5422f7927db17420ed3a`, `data/chunks.json`
+     `cd09ca8226b9c689214b331c5005b9d8`, `data/meta.json`
+     `5da6eb6b9457673f3902add0b14819ae` — frente a los del Ciclo 5
+     (`94294e24…`, `5a58d3e4…`, `2a280426…`), con el delta explicado
+     solo por las tres copias actualizadas (suma de fragmentos por
+     archivo, arriba). El fragmento [1] de tx-builder en
+     `chunks.json` sigue conteniendo la dirección nueva de Ana
+     (`0x48227ad1…4678`) de la sección T-A1, idéntico al del Ciclo 5
+     (el extracto renderizado en la respuesta empieza a media altura
+     del fragmento, como ya hacía la composición extractiva). Sin
+     cambios en `rag_core.py` ni en `app.py`: solo las tres copias
+     de `corpus-extra/`, los artefactos de `data/`, el README
+     (conteos 27/432 y calibración re-verificada) y este registro.
+     Nota de publicación: `data/index.faiss` no se publica (binario);
+     se regenera con `python ingest.py`.

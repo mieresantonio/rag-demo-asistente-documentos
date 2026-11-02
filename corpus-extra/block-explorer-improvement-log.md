@@ -46,3 +46,39 @@
 - **Verificación 2 (smoke):** datos reales en Node, dos cargas independientes: 25 bloques, 88 transacciones, 0 «pendiente»; **determinismo parcial confirmado — mismo hash del bloque 25 en ambas cargas** (`0xc1d37dab…f814a4d`, idéntico al del Ciclo 2). Servido `dist/` en local: index 200, `/favicon.svg` 200 y asset JS 200.
 - **Verificación 3 (contenido + comparación):** `dist/index.html` contiene la referencia `rel="icon" … href="/favicon.svg"` y `dist/favicon.svg` existe como archivo (569 B, con `#5eead4`). Bundle JS **idéntico** al build conocido-bueno del Ciclo 4: 164.738 B, mismo hash de archivo (el cambio no toca el JS; solo crecen `index.html` por la línea del enlace y el nuevo asset). Bundle: «pendiente» ×0, «confirmada» ×5 (E-M1 intacto). Sin variables `VITE_*`.
 - **Pendientes de esta app (no tocados en este ciclo, fuera del alcance enumerado):** E-B2 (variable `prevHash` muerta e import sin extensión), E-B4 (red de seguridad ante datos fuera de catálogo) y E-B7 (nota de génesis en el bloque 1) siguen como se diagnosticaron.
+
+## 2026-11-02 · Fase 2, Ciclo 6 — Bajas residuales: E-B2, E-B4 y E-B7 (las tres aplicadas)
+
+### [E-B2 · BAJA · Código muerto] Variable `prevHash` abandonada e import sin extensión
+
+- **Hallazgo:** `buildChain()` declaraba `let prevHash = '0x' + '0'.repeat(64)` y nunca la leía (el enlace real se hace con `prev` al final); `src/App.jsx` importaba `from './data'` sin extensión, el único import de datos del grupo sin `.js`.
+- **Cambio:** retirada la variable muerta de `src/data.js` (quedan solo la propiedad `prevHash` de cada bloque y su asignación `b.prevHash = prev`) y el import pasa a `'./data.js'`. Sin cambios de lógica: la variable muerta no consumía el generador, así que la cadena generada es idéntica.
+- **Verificación 1 (build):** `npm run build` → exit 0 (Vite 6.4.5, JS 165,58 kB); `node --check` de `data.js` correcto. No existen scripts `test`/`lint` en esta app (solo `build`/`dev`/`preview`).
+- **Verificación 2 (smoke con lógica ejecutada):** cadena generada en Node desde los datos reales tras el cambio: 25 bloques, 88 transacciones, hash del bloque 25 **idéntico** al de los Ciclos 2 y 5 (`0xc1d37dab…f814a4d`) y cadena correctamente enlazada (prevHash del bloque n = hash del n−1, verificado bloque a bloque).
+- **Verificación 3 (contenido + comparación):** ver V3 global del ciclo, abajo.
+
+### [E-B4 · BAJA · Robustez] Red de seguridad ante datos fuera de catálogo
+
+- **Hallazgo:** `StatusPill` hacía `map[status]` sin valor por defecto (un estado no previsto rompía el render al leer `s.cls` de `undefined`) y, si `view` apuntaba a una altura o hash inexistentes, `block`/`tx` eran `null` y `<main>` quedaba vacío sin mensaje. Inalcanzable desde la UI actual, pero sin estado de error.
+- **Cambio (solo reutiliza piezas existentes, sin CSS nuevo ni diseño nuevo):** `StatusPill` gana un valor por defecto `{ ShieldAlert, cls: 'warn' }` — la clase `.pill.warn` ya existía en `styles.css` sin uso desde que se retiró «pendiente» —; y se añade una vista «NO ENCONTRADO» que se muestra cuando la vista no es la lista y falta el bloque o la transacción, construida con las clases ya existentes (`.empty`, `SearchX`, `.btn primary`) y botón de vuelta a la lista.
+- **Verificación 1 (build):** misma build del ciclo, exit 0.
+- **Verificación 2 (smoke con lógica ejecutada):** gatillos reales comprobados en Node con los datos de la app: `getBlock(999)` → `null`, `getBlock(26)` → `null` y búsqueda de un hash inexistente dentro de un bloque existente → `null`; son exactamente las condiciones que ahora disparan la vista de error en vez del `<main>` vacío. Los flujos normales no la disparan (las 25 alturas y todas las transacciones de la cadena resuelven).
+- **Verificación 3 (contenido + comparación):** bundle con las cadenas decisivas de la vista («La altura o el hash indicados no existen» ×1, «esta transacción» ×1, «este bloque» ×1) y `warn` presente en el JS compilado (la rama por defecto). Ver V3 global.
+
+### [E-B7 · BAJA · Contenido] El bloque 1 ya explica su «hash anterior» de ceros (génesis)
+
+- **Hallazgo:** el detalle del bloque 1 mostraba «Hash del bloque anterior: `0x000…000`» con botón de copiar y sin ninguna nota de que ese bloque no tiene anterior ni de qué significan los ceros, en una app cuyo fin es explicar la cadena.
+- **Cambio:** dentro del mismo campo, y solo cuando `block.height === 1`, una nota con la clase ya existente `.muted`: «Bloque génesis: es el primero de la cadena y no tiene bloque anterior; los ceros son el marcador que lo indica, no un hash real.» Sin CSS nuevo; el resto de bloques no muestra la nota.
+- **Verificación 1 (build):** misma build del ciclo, exit 0.
+- **Verificación 2 (smoke con lógica ejecutada):** condición de la nota verificada contra los datos reales: bloque de altura 1 con `prevHash === '0x' + '0'.repeat(64)` → `true`, y es el único bloque con ese `prevHash` (los demás enlazan al hash del bloque anterior).
+- **Verificación 3 (contenido + comparación):** bundle con «Bloque génesis» ×1, «no tiene bloque» ×1 y «los ceros son el marcador» ×1. Ver V3 global.
+
+### Verificación 3 global del ciclo (contenido del bundle + comparación)
+
+- **Línea base conocida-buena (Ciclos 4–5):** JS 164.738 B, sha256 `d52ce435…`, byte-idéntico entre Ciclo 4 y Ciclo 5; CSS 7.560 B, sha256 `c822110b…`.
+- **Tras el Ciclo 6:** JS **165.581 B (+843 B, +0,51 %)**, sha256 `375ce363…`. Delta explicado **solo** por los tres cambios: vista «no encontrado» y valor por defecto de `StatusPill` (E-B4) + nota de génesis (E-B7), menos la variable muerta retirada (E-B2). **CSS byte-idéntico** (mismo sha256 y mismo nombre de asset `index-BvaUszU8.css`): no se tocó ningún estilo. El `dist/index.html` solo cambia por el nuevo nombre hasheado del asset JS; el `index.html` fuente no se tocó (favicon del Ciclo 5 intacto).
+- **Invariantes previos en el bundle:** «pendiente» ×0 y «confirmada» ×5 (E-M1, Ciclo 2, intacto); `sig-blockrow` presente (firma del Ciclo 4).
+- **Invariantes previos en ejecución (V2):** 25 bloques, 88 transacciones (74 confirmadas, 14 fallidas, **0 pendientes**); búsqueda «0x» → **0** resultados (E-B3, Ciclo 3, intacto); búsqueda por altura «7» → 1; prefijo real de hash → 1; posición de la primera transacción mostrada como 1 (E-B1 intacto). Servido `dist/` en local: index 200, asset JS 200 y `/favicon.svg` 200 (E-B6 intacto); servidor apagado al terminar.
+- **Sin variables de entorno de build:** `VITE_*` = 0 en `src/`, `vite.config.js`, `index.html`, `package.json` y en el bundle; build autónomo, sin dependencia no documentada.
+- **README:** no se tocó — ninguna afirmación suya queda falsa tras estos cambios (la búsqueda y su estado vacío, los datos y los estados «confirmada»/«fallida» siguen describiendo lo que el código hace).
+- **Pendientes de esta app tras este ciclo:** ninguna de las bajas E-B* queda pendiente; quedan fuera de este alcance las medias ya cerradas y la nota de diseño E-B8, que no era objeto de este ciclo.
