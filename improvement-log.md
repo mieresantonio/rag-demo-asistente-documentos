@@ -543,3 +543,166 @@
   `data/chunks.json`, `data/meta.json`, `README.md` e
   `improvement-log.md`. `data/index.faiss` NO viaja (binario; se
   regenera con `python ingest.py`).
+
+## 2026-11-02 · Fase 2, Ciclo 10 (cuarto refresco del corpus: las entradas del Ciclo 9)
+
+### Cuarto refresco — cinco copias al día: el suelo de tests web3 del Ciclo 9
+
+- **Objetivo:** tras la copia del Ciclo 9, los registros de las cinco
+  web3 restantes recibieron sus entradas del Ciclo 9 (suelo de tests
+  permanente en cada una), así que sus copias en `corpus-extra/`
+  estaban desactualizadas respecto a los originales. Este ciclo las
+  refresca con el mismo mecanismo de los Ciclos 5, 7 y 9, sin tocar
+  código. Respaldo previo del estado del Ciclo 9 (artefactos de
+  `data/`, las 15 copias de `corpus-extra/`, README y este registro)
+  en `/tmp/rag-demo-ciclo10-backup/`, antes de tocar nada.
+- **Refresco (`refresh_corpus_extra.py`, idempotente, con
+  verificación MD5 de cada copia contra su original):** cambiaron
+  **exactamente las cinco copias esperadas** —comparación MD5 de
+  toda la carpeta contra el estado del Ciclo 9 y contraste previo
+  copia↔original archivo a archivo; las otras 10 copias quedaron
+  byte-idénticas y cada copia nueva coincide por MD5 con su
+  original—:
+  - `wallet-sim-improvement-log.md`: `7ec9d23d…` → `dde6c1d9…`
+    (Ciclo 9: WALLET-C9-1, suelo de tests `scripts/verify-data.mjs`
+    con 60 comprobaciones, importando el módulo real `src/state.js`).
+  - `token-explorer-improvement-log.md`: `7b049628…` → `2c1de334…`
+    (Ciclo 9: TOKEN-C9-1, suelo de tests con 137 comprobaciones
+    sobre el módulo real `src/data.js`).
+  - `contract-play-improvement-log.md`: `b437628f…` → `087489fc…`
+    (Ciclo 9: suelo de tests con 43 comprobaciones, extrayendo y
+    ejecutando el simulador real desde `src/App.jsx`).
+  - `dao-vote-improvement-log.md`: `5ebbd4d7…` → `0e52d126…`
+    (Ciclo 9: suelo de tests con 54 comprobaciones sobre el módulo
+    real `src/data.js` y anclas en `src/App.jsx`).
+  - `anti-phishing-improvement-log.md`: `7b3b94d1…` → `43c94ac8…`
+    (Ciclo 9: suelo de tests con 62 comprobaciones sobre el módulo
+    real `src/data.js` y anclas en `src/App.jsx`).
+  Los cinco cambios son añadidos puros de la sección de su ciclo al
+  final de cada registro (verificado por `diff` contra las copias
+  del Ciclo 9 antes del refresco): ningún original perdió ni alteró
+  contenido previo, y no cambió ninguna copia inesperada. Las tres
+  entradas de contract-play, dao-vote y anti-phishing traen además
+  la nota de conteo del Ciclo 9: con ellas son **9 de 10** las web3
+  con suelo de tests, porque tx-builder no tiene `scripts/` ni
+  `test` en su `package.json` (queda constancia; no es un arreglo de
+  este ciclo). La exclusión del registro propio del rag-demo se
+  mantiene, por el motivo documentado en el Ciclo 5
+  (autorreferencia).
+- **Re-ingesta:** mismos 27 documentos, **467 → 498 fragmentos**
+  (+31), con el delta explicado por archivo y solo por archivo
+  (verificado contra `data/chunks.json`): anti-phishing 19 → 26
+  (+7), contract-play 10 → 17 (+7), dao-vote 12 → 19 (+7),
+  token-explorer 17 → 22 (+5), wallet-sim 16 → 21 (+5); los
+  fragmentos de los otros 22 archivos son idénticos en número y en
+  contenido a los del Ciclo 9, y dentro de los cinco archivos
+  actualizados los fragmentos previos son un prefijo exacto de los
+  nuevos: los nuevos son solo las secciones del Ciclo 9 añadidas.
+- **Verificaciones (triple reforzada):**
+  1. `py_compile` limpio en `app.py`, `rag_core.py`, `ingest.py` y
+     `refresh_corpus_extra.py`.
+  2. Batería completa por la API real, con el servidor levantado
+     (modelo cargado en el arranque en 24,7 s): `/api/health` →
+     `estado: "ok"`, `modelo_cargado: true`, **27 documentos,
+     498 fragmentos**, coherentes con `data/meta.json`. Resultados,
+     todos con el patrón conocido-bueno de los Ciclos 5, 7 y 9:
+     - REA → `ingenieria-inversa.md` en 1.ª posición, 0,526, alta.
+     - Automatizaciones → las 4 fuentes de
+       `automatizaciones-analisis.md`, máxima 0,699, alta.
+     - 45/90 → las 4 fuentes de `comparacion-prompts-45-vs-90.md`,
+       máxima 0,669, alta.
+     - Despliegue → `despliegue.md` en las posiciones **1–3**
+       (invariante crítico intacto), 4.ª fuente de `analisis.md`,
+       máxima 0,502, alta.
+     - Barbería (Ciclo 1) → las 4 fuentes de su registro en
+       `corpus-extra/`, máxima 0,557, alta (recuperación a nivel
+       de documento, como ya se documentó en el Ciclo 5).
+     - Tx-builder → posiciones 1–3 en su sección exacta (T-A1,
+       direcciones), máxima 0,522, alta; la 4.ª fuente sigue
+       siendo la sección del Ciclo 6 del mismo registro.
+     - Nft-studio (Ciclo 6) → máxima 0,570, alta, con las
+       posiciones 1–2 en su sección exacta (N-B8). Matiz honesto:
+       la 3.ª fuente es ahora la sección del Ciclo 7 (suelo de
+       tests) del mismo registro —ya ocupaba ese lugar en el
+       Ciclo 9— y la 4.ª es la sección nueva del Ciclo 9 de
+       anti-phishing, cuyo encabezado de tests es casi idéntico al
+       de nft-studio; es contenido vecino del tema, no una
+       degradación de la respuesta principal.
+     - Mundo-vida-ia (Ciclo 8) → las 4 fuentes son su registro,
+       las 4 en su sección exacta del Ciclo 8, máxima 0,562, alta.
+     - Fuera de tema: capital de Francia → baja, sin fuentes
+       (ningún fragmento ≥ 0,30); clima → baja, máxima 0,320,
+       sin fuentes.
+     - NUEVA · Ciclo 9, el 9/10 («¿Qué app web3 no tiene suelo de
+       tests en el Ciclo 9?») → las 4 fuentes son el registro de
+       anti-phishing, las 4 en su sección exacta del Ciclo 9,
+       máxima 0,675, alta, y la respuesta [1] contiene literal la
+       explicación veraz: son 9 de 10 las web3 con suelo de tests
+       porque tx-builder no tiene `scripts/` ni `test` en su
+       `package.json`. Matiz honesto, medido y no escondido: la
+       formulación literal «¿Por qué el conjunto web3 quedó 9/10
+       y no 10/10 en el Ciclo 9?» NO recupera esa sección (trae
+       fragmentos de tx-builder del Ciclo 6 y de hash-lab del
+       Ciclo 5, cuyos títulos contienen «conjunto web3», máxima
+       0,514, sin la explicación); la pregunta que funciona es la
+       de la app que falta, y así queda documentada.
+     - NUEVA · Ciclo 9, anti-phishing («¿Cuántas comprobaciones
+       tiene el test de anti-phishing?») → las 4 fuentes son su
+       registro, las 4 en su sección exacta del Ciclo 9, máxima
+       0,597, alta; la cifra —62 comprobaciones— está en el
+       fragmento completo de la fuente 4, aunque la composición
+       extractiva que encabeza la respuesta no la incluye en su
+       extracto (recuperación a nivel de sección, el mismo matiz
+       ya documentado para la barbería).
+     Sin degradación en ninguna pregunta de la batería previa:
+     **no hizo falta revertir** la re-ingesta. Servidor apagado
+     al terminar (puerto 5057 sin respuesta, comprobado).
+  3. Por contenido (V3): artefactos nuevos — `data/index.faiss`
+     `4853e88ff9377f7cdcf7c4951b6cd366`, `data/chunks.json`
+     `79b732a6030e2546548d1e9c84a62a24`, `data/meta.json`
+     `4a91622aa8c79333d7ad4809ab213e4e` — frente a los del Ciclo 9
+     (`927ef913…`, `416b9ac7…`, `a2652889…`), con el delta
+     explicado solo por las cinco copias actualizadas (suma de
+     fragmentos por archivo, arriba), medidos por `md5sum` directo
+     sobre los artefactos ingeridos en esta sesión. El fragmento
+     de tx-builder con la dirección nueva de Ana
+     (`0x48227ad1…4678`) de la sección T-A1 sigue presente en
+     `chunks.json`, idéntico al de los Ciclos 5, 7 y 9. Sin
+     cambios en `rag_core.py` ni en `app.py`: solo las cinco
+     copias de `corpus-extra/`, los artefactos de `data/`, el
+     README (conteos 27/498 y calibración re-verificada, con las
+     dos preguntas nuevas del Ciclo 9 medidas) y este registro.
+     Nota de publicación: `data/index.faiss` no se publica
+     (binario); se regenera con `python ingest.py`.
+
+- **Nota de concurrencia (verificada y acotada, no escondida):**
+  tras la ingesta y la batería, una segunda ejecución de control
+  del script detectó que dos originales habían recibido entradas
+  nuevas DURANTE este ciclo (trabajo concurrente del coordinador,
+  mtimes 23:17 UTC, posteriores a la ingesta de las 23:16 UTC):
+  la barbería (`9e51b62d…` → `cdb05120…`: su entrada del **Ciclo
+  10**, smoke permanente `scripts/smoke.py` con 56 comprobaciones)
+  y tx-builder (`3d78a61b…` → `b96e9f43…`: su entrada del **Ciclo
+  10**, suelo de tests con 87 comprobaciones, con la que el
+  conjunto web3 pasa a 10/10). Ambas verificadas contra su
+  original por `diff`: añadidos puros al final, sin pérdida de
+  contenido previo. **Decisión:** quedan FUERA de este refresco —
+  su alcance son las entradas del Ciclo 9, y estas dos son del
+  Ciclo 10: son el material del próximo refresco (Ciclo 11)— y
+  las dos copias se restauraron al estado exacto ingerido, así
+  que `corpus-extra/` y el índice quedan en coherencia total
+  (MD5 de las 15 copias = los de la ingesta de este ciclo). Que
+  conste para el coordinador: la afirmación «9/10» de este
+  registro es la veraz del Ciclo 9; a fecha de cierre de este
+  ciclo ya existe la entrada que lo lleva a 10/10, aún sin
+  ingerir.
+
+- **Lista para publicar (la publica el coordinador):**
+  `corpus-extra/wallet-sim-improvement-log.md`,
+  `corpus-extra/token-explorer-improvement-log.md`,
+  `corpus-extra/contract-play-improvement-log.md`,
+  `corpus-extra/dao-vote-improvement-log.md`,
+  `corpus-extra/anti-phishing-improvement-log.md`,
+  `data/chunks.json`, `data/meta.json`, `README.md` e
+  `improvement-log.md`. `data/index.faiss` NO viaja (binario; se
+  regenera con `python ingest.py`).
