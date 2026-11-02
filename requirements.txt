@@ -1,0 +1,8 @@
+# Nota: sentence-transformers instala PyTorch (build estándar de PyPI).
+# En máquinas con poco espacio en /tmp o sin GPU, se puede instalar antes
+# la build solo-CPU, mucho más ligera, y pip la dará por satisfecha:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+flask>=3.0
+sentence-transformers>=3.0
+faiss-cpu>=1.8
+pypdf>=4.0
