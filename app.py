@@ -14,7 +14,18 @@ Arranque:
                        # en http://127.0.0.1:5057 (la carga forma parte
                        # del arranque; /api/health dice «calentando»
                        # mientras el modelo no esté listo)
+
+Configuración opcional por variables de entorno, con los mismos
+valores por defecto de siempre: RAG_DEMO_HOST (127.0.0.1) y
+RAG_DEMO_PORT (5057). Sin ellas, el comportamiento no cambia.
+
+Errores: también responden en JSON con la forma {"error": "..."}
+las rutas desconocidas (404), los métodos no permitidos (405), los
+cuerpos que superan el techo de MAX_CUERPO_BYTES (413) y los fallos
+internos (500), en vez de las páginas HTML por defecto de Flask.
 """
+import os
+
 from flask import Flask, jsonify, request
 
 from rag_core import (
@@ -26,9 +37,52 @@ from rag_core import (
 )
 
 MAX_PREGUNTA = 1000  # longitud máxima aceptada para el campo "pregunta"
+# Techo del cuerpo de la petición: una pregunta válida ocupa poco más
+# de 1 KB en JSON, así que 32 KB deja margen de sobra y corta de raíz
+# los cuerpos desmedidos antes de procesarlos.
+MAX_CUERPO_BYTES = 32 * 1024
+
+HOST = os.environ.get("RAG_DEMO_HOST", "127.0.0.1")
+try:
+    PORT = int(os.environ.get("RAG_DEMO_PORT", "5057"))
+except ValueError:
+    PORT = 5057
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = MAX_CUERPO_BYTES
 store = RagStore()
+
+
+@app.errorhandler(404)
+def error_404(_error):
+    return jsonify({"error": "Ruta no encontrada."}), 404
+
+
+@app.errorhandler(405)
+def error_405(error):
+    # RFC 9110 §15.5.6: una respuesta 405 DEBE llevar la cabecera
+    # «Allow» con los métodos válidos de la ruta. La excepción
+    # MethodNotAllowed los trae en «valid_methods» —incluye el HEAD
+    # automático de las rutas GET y el OPTIONS automático de Flask,
+    # igual que el 405 nativo de Werkzeug—, pero un jsonify nuevo los
+    # descartaba. Se añade la cabecera sin tocar el cuerpo ni el código.
+    respuesta = jsonify({"error": "Método no permitido en esta ruta."})
+    valid_methods = getattr(error, "valid_methods", None)
+    if valid_methods:
+        respuesta.headers["Allow"] = ", ".join(valid_methods)
+    return respuesta, 405
+
+
+@app.errorhandler(413)
+def error_413(_error):
+    return jsonify({
+        "error": "El cuerpo de la petición es demasiado grande."
+    }), 413
+
+
+@app.errorhandler(500)
+def error_500(_error):
+    return jsonify({"error": "Error interno del servidor."}), 500
 
 
 @app.get("/api/health")
@@ -83,11 +137,24 @@ def preguntar():
         }), 503
     try:
         k = int(data.get("k", 4))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: un k infinito (p. ej. el literal JSON
+        # «Infinity» o un exponente desbordado como 1e999, que el
+        # parser JSON convierte a float infinito) tampoco debe
+        # tumbar la petición: cae al mismo k por defecto.
         k = 4
     k = max(1, min(k, 8))
 
-    results = store.search(pregunta, k=k)
+    try:
+        results = store.search(pregunta, k=k)
+    except Exception:
+        # Un fallo del índice o del modelo no debe llegar como la
+        # página HTML de error de Flask: se registra y se responde
+        # con el mismo formato JSON de error que el resto de la API.
+        app.logger.exception("Fallo al buscar en el índice")
+        return jsonify({
+            "error": "No se pudo completar la búsqueda. Inténtalo de nuevo."
+        }), 500
     # La puerta de claridad mira la mejor similitud SEMÁNTICA de la
     # consulta en todo el corpus (definición del Ciclo 1): los
     # resultados vienen reordenados por relevancia híbrida, así que
@@ -147,4 +214,4 @@ if __name__ == "__main__":
             "la primera pregunta no pagará la carga." % (time.time() - t0),
             flush=True,
         )
-    app.run(host="127.0.0.1", port=5057)
+    app.run(host=HOST, port=PORT)

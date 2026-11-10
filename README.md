@@ -15,7 +15,10 @@ fuente citada.
 ## Cómo correrlo
 
 ```bash
-cd rag-demo
+cd rag-demo-asistente-documentos   # nombre del repo en GitHub; en el
+                                   # workspace del autor la carpeta se
+                                   # llama rag-demo (ver las rutas de
+                                   # la ingesta de aquí abajo)
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
@@ -34,7 +37,13 @@ menos de un segundo. `/api/health` refleja el estado real:
 `estado: "ok"` solo con el modelo ya cargado (`modelo_cargado: true`);
 si la app se sirve por otra vía sin ese arranque en caliente, dirá
 `"calentando"` hasta la primera búsqueda, y `"sin_indice"` si todavía
-no se ha ejecutado la ingesta.
+no se ha ejecutado la ingesta. En esa vía, si varias peticiones
+llegan a la vez con el modelo aún sin cargar, una cerradura con
+doble comprobación hace que se cargue una sola vez y las demás
+esperen a esa carga. Además de `estado` y `modelo_cargado`,
+`/api/health` devuelve `documentos` y `fragmentos` (los conteos del
+índice cargado; sin índice dice 0 y 0, aunque `data/meta.json` conserve
+los de la última ingesta), `modelo_embeddings` y `tipo_respuesta`.
 
 Probar:
 
@@ -46,16 +55,43 @@ curl -X POST http://127.0.0.1:5057/preguntar \
   -d '{"pregunta": "¿Qué es REA y para qué sirve?"}'
 ```
 
-La respuesta incluye `respuesta` (extractiva, con citas `[1]`, `[2]`…),
-`fuentes`, la lista de fragmentos usados con su archivo, su sección y su
-similitud, y dos campos de control: `confianza` (`alta` o `baja`) y
-`similitud_maxima`. El campo `pregunta` debe ser una cadena de texto no
+La respuesta incluye `pregunta` (el eco de la pregunta ya limpia),
+`tipo_respuesta`, `respuesta` (extractiva, con citas `[1]`, `[2]`…),
+`fuentes`, la lista de fragmentos usados —cada uno con su número (`n`),
+su archivo, su sección, su similitud y el texto del fragmento— y dos
+campos de control: `confianza` (`alta` o `baja`) y `similitud_maxima`.
+La petición admite además un campo opcional `k` con el número de
+fragmentos a devolver: por defecto vale 4, cualquier valor se ajusta al
+rango 1–8 y un `k` no numérico se ignora en favor del defecto. El campo `pregunta` debe ser una cadena de texto no
 vacía de como máximo 1000 caracteres; cualquier otro tipo de valor (un
 número, una lista, un campo ausente…) recibe un `400` con el error en JSON.
 Si el índice aún no existe (todavía no se ha ejecutado la ingesta),
 `/preguntar` responde `503` con el error en JSON —«El índice no existe
 todavía. Ejecuta primero: python ingest.py»— y `/api/health` lo refleja
-con `estado: "sin_indice"`.
+con `estado: "sin_indice"`. El mismo estado —y el mismo `503`—
+aparece si el conjunto de artefactos existe pero no es servible:
+un fichero corrupto o truncado, o un desacuerdo entre el número
+de vectores del índice, el de fragmentos y el que declara
+`meta.json`. La app arranca en ese estado y registra el motivo,
+en vez de no arrancar o de responder según la pregunta.
+
+Dos notas de arranque que no se ven en los comandos de arriba:
+
+- **Un clon recién hecho no trae índice.** `data/index.faiss` no está
+  en el repositorio (lo genera `ingest.py` en local y está en
+  `.gitignore`); el clon trae `data/chunks.json` y `data/meta.json`,
+  pero hasta que no se ejecute la ingesta la API responde como se
+  describe arriba: `sin_indice` en `/api/health` y `503` en
+  `/preguntar`.
+- **Todos los errores llegan en JSON**, con la forma
+  `{"error": "..."}`: también la ruta desconocida (`404`), el método
+  no permitido en una ruta (`405`, que además lleva la cabecera
+  `Allow` con los métodos válidos de esa ruta), el cuerpo
+  demasiado grande (`413`; el techo es de 32 KB, muy por encima
+  de lo que ocupa una pregunta válida) y un fallo interno (`500`).
+  El host y el puerto se pueden cambiar con las variables de
+  entorno `RAG_DEMO_HOST` y
+  `RAG_DEMO_PORT`; sin ellas se sirve en `127.0.0.1:5057`, como siempre.
 
 ## Corpus
 
@@ -76,7 +112,7 @@ fragmentos de la entrada del Ciclo 11 de la barbería
   (portfolio-apps ×3, la demo de barbería, web3-apps ×10 y
   mundo-vida-ia), para que la demo también responda sobre ese trabajo:
   qué se arregló en cada ciclo y por qué. Son **copias exactas** de los
-  originales, generadas por el script reproducible
+  originales en el momento de cada refresco, generadas por el script reproducible
   `refresh_corpus_extra.py` (que verifica cada copia por MD5 y borra
   las que ya no estén en su lista) con un nombre por app
   (`barberia-improvement-log.md`, `tx-builder-improvement-log.md`, …):
@@ -94,6 +130,20 @@ fragmentos de la entrada del Ciclo 11 de la barbería
 La ingesta acepta carpetas a medida: `python ingest.py carpeta1 carpeta2`.
 Formatos: Markdown (`.md`, troceado respetando encabezados) y PDF (`.pdf`,
 una sección por página).
+
+La ingesta no escribe sobre los artefactos en uso: compone
+`index.faiss`, `chunks.json` y `meta.json` completos en ficheros
+temporales del mismo directorio y los publica con tres renombres
+en ese orden (fragmentos, índice, metadatos). Un corte durante la
+escritura deja intacto el conjunto anterior; solo queda la ventana
+de esos tres renombres encadenados, sin escrituras de datos entre
+ellos.
+
+Los dos scripts de mantenimiento son seguros de consultar:
+`ingest.py --help` y `refresh_corpus_extra.py --help` solo muestran
+la ayuda y no ejecutan nada, y una bandera desconocida sale con
+error (código 2) sin tocar nada; sin argumentos, cada uno hace su
+trabajo de siempre.
 
 ## Cómo funciona
 
@@ -120,8 +170,8 @@ suelo mínimo de similitud semántica 0,30, reordenados por relevancia
 híbrida (la similitud más una bonificación léxica acotada por
 coincidencia de raíces con el archivo, la sección y el texto) → k=4
 fragmentos; si la mejor similitud semántica de la consulta no llega
-a 0,50, la API responde «sin resultados claros» y no devuelve
-fuentes — ver «Límites honestos»
+a 0,50, la API responde «sin resultados claros» y devuelve la lista de
+fuentes vacía — ver «Límites honestos»
       │
       ▼
 respuesta extractiva: los fragmentos, ordenados por relevancia y citados
@@ -135,7 +185,7 @@ Piezas:
 | `rag_core.py` | Troceado, embeddings, construcción y carga del índice, búsqueda y composición de la respuesta |
 | `ingest.py` | Script de ingesta reproducible (CLI) |
 | `app.py` | API Flask: `GET /api/health`, `POST /preguntar` |
-| `data/` | Índice FAISS, fragmentos y metadatos generados por la ingesta |
+| `data/` | Índice FAISS (generado por la ingesta, no versionado), fragmentos y metadatos |
 
 ## Límites honestos
 

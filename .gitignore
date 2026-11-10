@@ -1,3 +1,10 @@
 .venv/
 __pycache__/
 *.pyc
+.env
+.env.*
+!.env.example
+.DS_Store
+# Índice FAISS: artefacto que genera ingest.py en local; no se versiona
+# (data/chunks.json y data/meta.json sí están en el repo).
+data/index.faiss

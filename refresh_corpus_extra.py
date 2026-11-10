@@ -28,7 +28,11 @@ app, hay que volver a ejecutar este script y después la ingesta:
 El script es idempotente: borra de `corpus-extra/` cualquier `.md`
 que ya no esté en la lista, para que la carpeta sea siempre el
 resultado exacto de esta lista y no una acumulación manual.
+
+Sin argumentos ejecuta el refresco; `--help` solo muestra la ayuda
+y no toca nada (ver la guarda de argumentos al final del fichero).
 """
+import argparse
 import hashlib
 import os
 import shutil
@@ -117,4 +121,18 @@ def main():
 
 
 if __name__ == "__main__":
+    # Guarda de argumentos (argparse, como tests_regresion_api.py):
+    # este script BORRA y reescribe ficheros de corpus-extra/, y
+    # antes no miraba los argumentos en absoluto: un
+    # `refresh_corpus_extra.py --help` ejecutaba el refresco entero
+    # en vez de mostrar ayuda, y una bandera mal escrita hacía lo
+    # mismo. Sin argumentos el comportamiento es exactamente el de
+    # siempre; `--help` sale con 0 sin tocar nada y una bandera
+    # desconocida sale con error (código 2) sin tocar nada.
+    parser = argparse.ArgumentParser(
+        description="Refresca corpus-extra/ con los improvement-log "
+                    "de las apps: copia exacta de cada original, "
+                    "verificada por MD5, y borra los .md que ya no "
+                    "estén en la lista. No admite argumentos.")
+    parser.parse_args()
     sys.exit(main())

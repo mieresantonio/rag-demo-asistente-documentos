@@ -7,7 +7,9 @@ fragmentos recuperados, no la genera un LLM).
 import json
 import os
 import re
+import threading
 import unicodedata
+from functools import lru_cache
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -62,6 +64,10 @@ _PALABRAS_VACIAS = {
 }
 
 
+# Caché de raíces: `_raices` es una función pura del texto y `search`
+# la recalculaba para los mismos fragmentos en cada petición; los
+# llamantes solo leen el conjunto (intersecciones), nunca lo mutan.
+@lru_cache(maxsize=4096)
 def _raices(texto):
     """Raíces léxicas simples: palabras de 4+ letras sin tildes ni
     palabras vacías, recortadas a 6 caracteres («despliega»,
@@ -232,9 +238,6 @@ def build_index(corpus_dirs=None):
     index.add(embeddings)
 
     os.makedirs(DATA_DIR, exist_ok=True)
-    faiss.write_index(index, INDEX_PATH)
-    with open(CHUNKS_PATH, "w", encoding="utf-8") as fh:
-        json.dump(chunks, fh, ensure_ascii=False)
     meta = {
         "modelo": MODEL_NAME,
         "documentos": len(documents),
@@ -242,12 +245,122 @@ def build_index(corpus_dirs=None):
         "fragmentos": len(chunks),
         "dimension": int(embeddings.shape[1]),
     }
-    with open(META_PATH, "w", encoding="utf-8") as fh:
-        json.dump(meta, fh, ensure_ascii=False, indent=2)
+    # Escritura atómica de los tres artefactos (ronda 11, bucle 3).
+    # Antes se escribía directamente sobre los destinos, en secuencia:
+    # un corte dentro de esa ventana (~10 ms) dejaba un conjunto
+    # mezclado o truncado, y medido en sondas eso importa: un
+    # chunks.json truncado o un index.faiss truncado impiden arrancar
+    # (la excepción sale de RagStore en el import de app.py), y un
+    # índice nuevo con los fragmentos viejos deja /api/health en «ok»
+    # mientras las preguntas que tocan ids nuevos reciben un 500 por
+    # IndexError en `search`. Por eso:
+    #
+    # Fase 1 — preparación: cada artefacto se escribe COMPLETO en un
+    # temporal del mismo directorio (misma partición, renombre
+    # atómico posible) y se sincroniza a disco. Los destinos no se
+    # tocan en esta fase: cualquier corte aquí deja el conjunto
+    # anterior íntegro y servible, y los temporales huérfanos no los
+    # lee RagStore (busca los nombres exactos).
+    #
+    # Fase 2 — publicación: tres `os.replace` en este orden:
+    #   1. chunks.json: es el fichero que `search` desreferencia por
+    #      los ids que devuelve el índice; sus datos nuevos deben
+    #      estar en su sitio antes de que el índice nuevo exista.
+    #   2. index.faiss: RagStore lo lee primero y es la fuente de
+    #      los ids; solo se publica cuando ya puede desreferenciarse
+    #      contra los fragmentos publicados en el paso anterior.
+    #   3. meta.json: RagStore lo lee el último y /api/health lo usa
+    #      como descriptor del conjunto (documentos/fragmentos), así
+    #      que solo se publica cuando la pareja índice+fragmentos que
+    #      describe ya es la nueva; actúa como marca de cierre.
+    # Entre un replace y el siguiente la ventana residual es la de
+    # tres llamadas al sistema encadenadas (sin escrituras de datos
+    # de por medio): no es eliminable con renombres simples —exigiría
+    # directorios por generación—, pero la ventana de escritura, que
+    # es la que dura y la que truncaba ficheros, queda cerrada.
+    tmp_index = INDEX_PATH + ".tmp"
+    tmp_chunks = CHUNKS_PATH + ".tmp"
+    tmp_meta = META_PATH + ".tmp"
+    temporales = (tmp_index, tmp_chunks, tmp_meta)
+    try:
+        faiss.write_index(index, tmp_index)
+        with open(tmp_index, "rb") as fh:
+            os.fsync(fh.fileno())
+        with open(tmp_chunks, "w", encoding="utf-8") as fh:
+            json.dump(chunks, fh, ensure_ascii=False)
+            fh.flush()
+            os.fsync(fh.fileno())
+        with open(tmp_meta, "w", encoding="utf-8") as fh:
+            json.dump(meta, fh, ensure_ascii=False, indent=2)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_chunks, CHUNKS_PATH)
+        os.replace(tmp_index, INDEX_PATH)
+        os.replace(tmp_meta, META_PATH)
+    finally:
+        # Tras publicar, los temporales ya no existen (fueron
+        # renombrados); si algo falló en la fase 1, se retiran los
+        # que queden para no dejar residuos en data/.
+        for tmp in temporales:
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
     return meta
 
 
 # ---------------------------------------------------------------- consulta
+def _comprobar_coherencia(index, chunks, meta):
+    """Cuadre mínimo del conjunto índice + fragmentos + metadatos.
+
+    Lanza ValueError con el motivo si el conjunto no es servible:
+    el nº de vectores del índice, el nº de fragmentos cargados y el
+    que meta.json declara deben ser EL MISMO número (si meta trae un
+    desglose por documento —la lista «archivos» frente a
+    «documentos», o un dict de fragmentos por documento—, su suma
+    también debe cuadrar, y la «dimension» declarada debe ser la del
+    índice). Sin este cuadre, medido en la ronda 11, la app mentía:
+    un índice de 568 vectores con 527 fragmentos dejaba /api/health
+    en «ok» con conteos de otro conjunto y `search` reventaba con
+    IndexError solo en las preguntas que tocaban los ids nuevos.
+    """
+    if not isinstance(chunks, list) or not chunks:
+        raise ValueError("chunks.json no es una lista de fragmentos "
+                         "no vacía")
+    n = len(chunks)
+    if index.ntotal != n:
+        raise ValueError(
+            "el índice tiene %d vectores y chunks.json %d fragmentos"
+            % (index.ntotal, n))
+    if not isinstance(meta, dict):
+        raise ValueError("meta.json no es un objeto JSON")
+    fragmentos_meta = meta.get("fragmentos")
+    if fragmentos_meta is not None and fragmentos_meta != n:
+        raise ValueError(
+            "meta.json declara %s fragmentos y chunks.json tiene %d"
+            % (fragmentos_meta, n))
+    dimension_meta = meta.get("dimension")
+    if dimension_meta is not None and dimension_meta != index.d:
+        raise ValueError(
+            "meta.json declara dimensión %s y el índice tiene %d"
+            % (dimension_meta, index.d))
+    archivos = meta.get("archivos")
+    documentos = meta.get("documentos")
+    if archivos is not None and documentos is not None \
+            and len(archivos) != documentos:
+        raise ValueError(
+            "meta.json declara %s documentos pero su desglose "
+            "«archivos» lista %d" % (documentos, len(archivos)))
+    for clave in ("fragmentos_por_documento", "fragmentos_por_archivo"):
+        desglose = meta.get(clave)
+        if isinstance(desglose, dict) and sum(desglose.values()) != n:
+            raise ValueError(
+                "el desglose «%s» de meta.json suma %s fragmentos "
+                "y chunks.json tiene %d"
+                % (clave, sum(desglose.values()), n))
+
+
 class RagStore:
     """Carga el índice una vez y responde preguntas recuperando fragmentos."""
 
@@ -256,14 +369,39 @@ class RagStore:
         self.chunks = []
         self.meta = {}
         self.model = None
+        self._model_lock = threading.Lock()
         if os.path.exists(INDEX_PATH) and os.path.exists(CHUNKS_PATH):
-            import faiss
-            self.index = faiss.read_index(INDEX_PATH)
-            with open(CHUNKS_PATH, encoding="utf-8") as fh:
-                self.chunks = json.load(fh)
-            if os.path.exists(META_PATH):
-                with open(META_PATH, encoding="utf-8") as fh:
-                    self.meta = json.load(fh)
+            # Carga con red de seguridad (ronda 12): las escrituras
+            # atómicas de build_index evitan PRODUCIR un conjunto
+            # incoherente o truncado, pero el estado puede aparecer
+            # por otra vía (copia manual, disco, un índice de otra
+            # foto del corpus). Antes, un fichero corrupto reventaba
+            # aquí y la app ni arrancaba, y un conjunto incoherente
+            # cargaba «bien» y mentía en health o fallaba según la
+            # pregunta. Ahora cualquier fallo de lectura o de cuadre
+            # cae al MISMO estado que ya existe para «sin_indice»
+            # (index None, chunks y meta vacíos: health lo reporta
+            # así y /preguntar responde 503), registrando el motivo.
+            try:
+                import faiss
+                index = faiss.read_index(INDEX_PATH)
+                with open(CHUNKS_PATH, encoding="utf-8") as fh:
+                    chunks = json.load(fh)
+                meta = {}
+                if os.path.exists(META_PATH):
+                    with open(META_PATH, encoding="utf-8") as fh:
+                        meta = json.load(fh)
+                _comprobar_coherencia(index, chunks, meta)
+            except Exception as exc:
+                print(
+                    "RagStore: conjunto de artefactos no servible "
+                    "(%s); se arranca en estado «sin_indice»." % (exc,),
+                    flush=True,
+                )
+                return
+            self.index = index
+            self.chunks = chunks
+            self.meta = meta
 
     @property
     def ready(self):
@@ -288,8 +426,16 @@ class RagStore:
         return self.model_loaded
 
     def _embed(self, text):
+        # Doble comprobación con cerradura: sin ella, dos hilos que
+        # llegan en frío a la vez (posible si la app se sirve por WSGI
+        # sin pasar por warmup()) cargaban el modelo dos veces a la
+        # vez — medido en la ronda 8: 2 cargas solapadas en 2/2
+        # sondas. La comprobación exterior evita tomar la cerradura
+        # en cada búsqueda una vez el modelo existe.
         if self.model is None:
-            self.model = load_model()
+            with self._model_lock:
+                if self.model is None:
+                    self.model = load_model()
         import numpy as np
         vec = self.model.encode([text], normalize_embeddings=True)
         return np.asarray(vec, dtype="float32")
