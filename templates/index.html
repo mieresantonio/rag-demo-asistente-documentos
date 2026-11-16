@@ -128,6 +128,59 @@
     gap: 16px;
     margin-top: 12px;
   }
+  .ejemplos {
+    margin: 12px 0 0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .ejemplos-etiqueta {
+    margin: 0;
+    color: var(--atenuado);
+    font-size: 13px;
+  }
+  button.ejemplo {
+    min-height: 36px;
+    padding: 6px 14px;
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    background: var(--elevado);
+    color: var(--texto);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  button.ejemplo:hover:not(:disabled) {
+    background: var(--acento-suave);
+    color: var(--acento);
+  }
+  .historial-lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .historial-entrada {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-top: 1px solid var(--borde);
+    font-size: 14px;
+  }
+  .historial-entrada:first-child { border-top: 0; padding-top: 4px; }
+  .historial-pregunta { font-weight: 600; }
+  .historial-meta {
+    color: var(--atenuado);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .historial-nota {
+    margin: 12px 0 0;
+    color: var(--atenuado);
+    font-size: 13px;
+  }
   .contador {
     color: var(--atenuado);
     font-size: 13px;
@@ -267,6 +320,17 @@
       <textarea id="pregunta" name="pregunta" rows="3" maxlength="1000"
         placeholder="¿Qué es REA y para qué sirve?"
         autocomplete="off"></textarea>
+      <div class="ejemplos">
+        <p class="ejemplos-etiqueta">Prueba con un ejemplo:</p>
+        <button type="button" class="ejemplo"
+          data-pregunta="¿Qué es REA?">¿Qué es REA?</button>
+        <button type="button" class="ejemplo"
+          data-pregunta="¿Qué es blockchain y la web3?">¿Qué es blockchain
+          y la web3?</button>
+        <button type="button" class="ejemplo"
+          data-pregunta="¿Qué es el segundo yo 24/7 de CenteIA?">¿Qué es el
+          segundo yo 24/7 de CenteIA?</button>
+      </div>
       <div class="fila-form">
         <span class="contador" id="contador">0 / 1000</span>
         <button type="submit" id="boton-preguntar" disabled>Preguntar</button>
@@ -284,6 +348,13 @@
       <span class="similitud" id="similitud"></span>
     </div>
     <div id="fuentes"></div>
+  </section>
+
+  <section class="tarjeta" id="historial" aria-label="Historial de la sesión" hidden>
+    <h2>Historial de la sesión</h2>
+    <ol class="historial-lista" id="historial-lista"></ol>
+    <p class="historial-nota">Solo vive en esta página: al recargar se
+    borra. La más reciente queda arriba.</p>
   </section>
 
   <p class="error-caja" id="error-caja" role="alert" hidden></p>
@@ -313,6 +384,9 @@
   var similitud = document.getElementById("similitud");
   var fuentesDiv = document.getElementById("fuentes");
   var errorCaja = document.getElementById("error-caja");
+  var ejemplos = document.querySelectorAll(".ejemplo");
+  var historial = document.getElementById("historial");
+  var historialLista = document.getElementById("historial-lista");
   var indiceListo = false;
 
   function escapar(texto) {
@@ -327,10 +401,54 @@
     return String(nombre || "").replace("sentence-transformers/", "");
   }
 
+  // Desglose del ranking híbrido: la relevancia (lo que ordena las
+  // fuentes) es la similitud semántica más la bonificación léxica.
+  // Sin el desglose, una fuente con similitud menor por encima de
+  // otra parecía un error de ordenación; con él, se ve el porqué.
+  function desgloseRelevancia(f) {
+    var sim = (typeof f.similitud === "number")
+      ? f.similitud.toFixed(3) : "—";
+    if (typeof f.relevancia !== "number" ||
+        typeof f.bonificacion_lexica !== "number") {
+      return "sim. " + sim;
+    }
+    return "sim. " + sim + " + léx. " +
+      f.bonificacion_lexica.toFixed(3) + " → relev. " +
+      f.relevancia.toFixed(3);
+  }
+
   function actualizarBoton() {
     var texto = campo.value.trim();
     boton.disabled = !indiceListo || texto.length === 0;
     contador.textContent = campo.value.length + " / 1000";
+    // Sin índice el campo está deshabilitado: los ejemplos también,
+    // para no invitar a rellenar una pregunta que no se puede enviar.
+    ejemplos.forEach(function (b) { b.disabled = campo.disabled; });
+  }
+
+  function agregarHistorial(pregunta, confianza, similitudMaxima) {
+    // Solo DOM, sin persistencia: al recargar la página se borra.
+    // Se construye con nodos (textContent), nunca con innerHTML, para
+    // que una pregunta con <script> no pueda inyectar nada.
+    var entrada = document.createElement("li");
+    entrada.className = "historial-entrada";
+    var preguntaSpan = document.createElement("span");
+    preguntaSpan.className = "historial-pregunta";
+    preguntaSpan.textContent = pregunta;
+    var metaSpan = document.createElement("span");
+    metaSpan.className = "historial-meta";
+    metaSpan.textContent =
+      (confianza === "alta" ? "Confianza alta" : "Confianza baja") +
+      " · sim. " + (typeof similitudMaxima === "number"
+        ? similitudMaxima.toFixed(3) : "—");
+    entrada.appendChild(preguntaSpan);
+    entrada.appendChild(metaSpan);
+    historialLista.insertBefore(entrada, historialLista.firstChild);
+    // Tope de 20 entradas: la sesión no debe crecer sin límite.
+    while (historialLista.children.length > 20) {
+      historialLista.removeChild(historialLista.lastChild);
+    }
+    historial.hidden = false;
   }
 
   function mostrarError(mensaje) {
@@ -380,6 +498,17 @@
 
   campo.addEventListener("input", actualizarBoton);
 
+  // Los ejemplos rellenan el campo y dejan el botón listo para
+  // enviar; no envían solos: el visitante ve la pregunta antes de
+  // lanzarla y puede editarla.
+  ejemplos.forEach(function (b) {
+    b.addEventListener("click", function () {
+      campo.value = b.getAttribute("data-pregunta") || "";
+      actualizarBoton();
+      campo.focus();
+    });
+  });
+
   form.addEventListener("submit", function (evento) {
     evento.preventDefault();
     var pregunta = campo.value.trim();
@@ -425,9 +554,8 @@
               '<span class="fuente-num">[' + escapar(f.n) + "]</span>" +
               '<span class="fuente-archivo">' + escapar(f.archivo) + "</span>" +
               '<span class="fuente-seccion">' + escapar(f.seccion) + "</span>" +
-              '<span class="fuente-sim">sim. ' +
-              (typeof f.similitud === "number"
-                ? f.similitud.toFixed(3) : "—") + "</span>" +
+              '<span class="fuente-sim">' +
+              escapar(desgloseRelevancia(f)) + "</span>" +
               "</div>" +
               '<p class="fuente-texto">' + escapar(f.fragmento) + "</p>" +
               "</div>";
@@ -435,6 +563,7 @@
         }
         fuentesDiv.innerHTML = html;
         resultado.hidden = false;
+        agregarHistorial(pregunta, confianza, sim);
       })
       .catch(function () {
         mostrarError("No se pudo contactar con la API. " +

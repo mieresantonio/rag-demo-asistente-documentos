@@ -100,19 +100,76 @@ Dos notas de arranque que no se ven en los comandos de arriba:
   entorno `RAG_DEMO_HOST` y
   `RAG_DEMO_PORT`; sin ellas se sirve en `127.0.0.1:5057`, como siempre.
 
+## Pruébala en 2 minutos
+
+Con el servidor levantado y el índice del Ciclo 14 (28
+documentos, 572 fragmentos), estos seis `curl` muestran lo que
+la demo hace — y lo que no hace. Cada cifra es la respuesta
+real medida el 16 nov 2026, no un ejemplo inventado (el puerto
+aquí es 5057, el de por defecto; si lo levantaste en otro,
+cámbialo en el comando).
+
+```bash
+# 1. REA — confianza alta, similitud 0,526, primera fuente
+#    ingenieria-inversa.md («Qué es REA»)
+curl -s -X POST http://127.0.0.1:5057/preguntar \
+  -H 'Content-Type: application/json' \
+  -d '{"pregunta": "¿Qué es REA y para qué sirve?"}'
+
+# 2. Blockchain y web3 — confianza alta, similitud 0,799, las 4
+#    fuentes son blockchain-web3.md
+curl -s -X POST http://127.0.0.1:5057/preguntar \
+  -H 'Content-Type: application/json' \
+  -d '{"pregunta": "¿Qué es blockchain y la web3?"}'
+
+# 3. Despliegue — confianza alta, similitud 0,502, primera
+#    fuente despliegue.md (el caso difícil del Ciclo 2: ver
+#    «Límites honestos» y la entrada RAG-M2 del registro)
+curl -s -X POST http://127.0.0.1:5057/preguntar \
+  -H 'Content-Type: application/json' \
+  -d '{"pregunta": "¿Cómo se despliega una aplicación?"}'
+
+# 4. Segundo yo — confianza alta, similitud 0,545, primera
+#    fuente la síntesis de CenteIA (esta pregunta era el ejemplo
+#    bajo umbral hasta el Ciclo 13)
+curl -s -X POST http://127.0.0.1:5057/preguntar \
+  -H 'Content-Type: application/json' \
+  -d '{"pregunta": "¿Qué es el segundo yo 24/7 de CenteIA?"}'
+
+# 5. Un registro de mejora — confianza alta, similitud 0,710,
+#    las 4 fuentes son el registro de gas-calc (la demo también
+#    responde sobre el trabajo de mejora, no solo sobre los
+#    materiales del curso)
+curl -s -X POST http://127.0.0.1:5057/preguntar \
+  -H 'Content-Type: application/json' \
+  -d '{"pregunta": "¿Qué corrigió gas-calc sobre el wei exacto y EIP-1559?"}'
+
+# 6. Fuera de tema — confianza baja, similitud 0,320, SIN
+#    fuentes: la API dice que no tiene resultados claros en vez
+#    de rellenar con fragmentos sin relación
+curl -s -X POST http://127.0.0.1:5057/preguntar \
+  -H 'Content-Type: application/json' \
+  -d '{"pregunta": "¿Qué tiempo hará mañana?"}'
+```
+
+Si alguna cifra cambia en un refresco futuro, es una regresión
+o una mejora medible, no un error del ejemplo: el registro de
+mejoras anota la calibración de cada ciclo.
+
 ## Corpus
 
 Documentos propios de Antonio, ya existentes en su workspace
-(**28 documentos, 568 fragmentos** en la ingesta del Ciclo 13,
-2026-11-16; el Ciclo 12 dejó 527: el séptimo refresco suma la
-síntesis de los vídeos de CenteIA (documento nuevo, +29
-fragmentos) y actualiza 8 registros de `corpus-extra`, con +12
-fragmentos netos en 5 de ellos):
+(**28 documentos, 572 fragmentos** en la ingesta del Ciclo 14,
+2026-11-16; el Ciclo 13 dejó 568: el octavo refresco actualiza
+el registro de mundo-vida-ia (+2 fragmentos) y la ingesta
+recoge la sección nueva de portafolio-y-empleo (+2) y el
+renombre Block Ethos ya publicado en el material de aprendido):
 
 - `centeia-materiales/` — análisis y evaluaciones de los materiales del
   curso «Tu segundo yo 24/7» (CenteIA), incluida la síntesis de los
-  vídeos (2026-11-04, 29 fragmentos, desde el Ciclo 13). *(12
-  documentos entre esta carpeta y la siguiente: el corpus inicial.)*
+  vídeos (2026-11-04, 29 fragmentos, desde el Ciclo 13). *(13
+  documentos entre esta carpeta y la siguiente: 12 del corpus
+  inicial + la síntesis del Ciclo 13.)*
 - `mundo-dirsi/aprendido/` — notas de aprendizaje (agentes e IA, blockchain,
   despliegue, ingeniería inversa, portafolio y empleo…).
 - `corpus-extra/` — **desde el Ciclo 5**: los registros de mejora
@@ -134,6 +191,28 @@ fragmentos netos en 5 de ellos):
     de las posiciones 1–3 a las 3–4 (medido en el Ciclo 5): el
     refresco no puede empeorar lo que ya funcionaba, así que queda
     fuera y el ajuste está documentado en el registro del proyecto.
+
+**Mapa de cobertura (2ª tanda, 2026-11-16):** cada uno de los 28
+documentos tiene una pregunta medida que lo recupera en el top-4
+con confianza alta: los 13 que ya vigilaba la batería más los 15
+restantes, auditados en esta tanda con su pregunta canario — los
+15 en 1.ª posición (tabla completa en el registro de mejoras,
+entrada «Mapa de cobertura»). Ningún documento muerto; los
+canarios más justos son wallet-sim (0,512) y token-explorer
+(0,538), los primeros a vigilar si el corpus crece.
+
+**Auditoría de frontera (2ª tanda, 2026-11-16):** lo que hoy NO
+está en el corpus está decidido por escrito (registro de
+mejoras, entrada «Auditoría de frontera»): 5 documentos
+recomendados para ingerir en el Ciclo 15 (el manual de agentes,
+los dos métodos destilados, el protocolo de refutación y el
+destilado Lovable/gpt-engineer), 2 pendientes de Antonio
+(el playbook y la recopilación de materiales) y el resto
+excluidos con motivo (calibración, banco de pruebas, inventario
+de capacidades, plantillas, preguntas abiertas). Sondeo medido:
+gpt-engineer y la refutación hoy no se responden (baja, sin
+fuentes); la «regla de tres» y la calibración reciben hoy
+falsos positivos con confianza alta desde documentos vecinos.
 
 La ingesta acepta carpetas a medida: `python ingest.py carpeta1 carpeta2`.
 Formatos: Markdown (`.md`, troceado respetando encabezados) y PDF (`.pdf`,
@@ -192,9 +271,24 @@ Piezas:
 |---|---|
 | `rag_core.py` | Troceado, embeddings, construcción y carga del índice, búsqueda y composición de la respuesta |
 | `ingest.py` | Script de ingesta reproducible (CLI) |
+| `refresh_corpus_extra.py` | Refresca `corpus-extra/` desde los registros originales (copia por app, verificación MD5) |
 | `app.py` | API Flask + interfaz web: `GET /`, `GET /api/health`, `POST /preguntar` |
 | `templates/index.html` | La interfaz web: una sola página autocontenida, sin recursos externos |
+| `tests_regresion_api.py` | Suite de regresión de la API: 56 comprobaciones (ver abajo) |
 | `data/` | Índice FAISS (generado por la ingesta, no versionado), fragmentos y metadatos |
+
+La suite de regresión levanta la app en un puerto libre y
+comprueba la API con y sin índice (salud, preguntas válidas y
+bajo umbral, validación de entradas, errores en JSON, límites
+de `k`, interfaz web) y que `data/` queda intacta tras correr:
+
+```bash
+.venv/bin/python tests_regresion_api.py   # 56 comprobaciones
+```
+
+Cada ciclo de refresco actualiza sus conteos esperados
+(documentos y fragmentos) y sus preguntas de referencia; el
+registro de mejoras anota el resultado de cada corrida.
 
 ## Límites honestos
 
@@ -209,15 +303,16 @@ Piezas:
   re-verificada en el Ciclo 5 sobre el corpus ampliado, de nuevo en
   el Ciclo 7 tras el segundo refresco, en el Ciclo 9 tras el
   tercero, en el Ciclo 10 tras el cuarto, en el Ciclo 11 tras
-  el quinto, en el Ciclo 12 tras el sexto y en el Ciclo 13 tras
-  el séptimo, 2026-11-16):
+  el quinto, en el Ciclo 12 tras el sexto, en el Ciclo 13 tras
+  el séptimo y en el Ciclo 14 tras el octavo, 2026-11-16):
   ningún fragmento por debajo de 0,30 entra nunca, y si la mejor
   similitud semántica de la consulta queda por debajo de 0,50 la API
   responde «sin resultados claros en tus documentos», con
   `confianza: "baja"` y `fuentes` vacía. Similitudes semánticas máximas
   medidas en el Ciclo 5 y reproducidas idénticas en los Ciclos 7, 9,
-  10, 11, 12 y 13:
-  dentro de tema, REA 0,526 · automatizaciones
+  10, 11, 12, 13 y 14:
+  dentro de tema, REA 0,526 · blockchain y web3 0,799 ·
+  automatizaciones
   0,699 · 45 frente a 90 prompts 0,669 · barbería (Ciclo 1) 0,557 ·
   direcciones de tx-builder 0,522 · despliegue 0,502 (ver el caso
   especial de abajo) · versiones de nft-studio (Ciclo 6, pregunta
@@ -234,7 +329,12 @@ Piezas:
   barbería?») 0,581 · segundo yo 24/7 (pregunta nueva del
   Ciclo 13, «¿Qué es el segundo yo 24/7 de CenteIA?») 0,545 ·
   toReversed en block-explorer (pregunta nueva del Ciclo 13,
-  «¿Qué cambió toReversed en block-explorer?») 0,538; fuera
+  «¿Qué cambió toReversed en block-explorer?») 0,538 ·
+  consolas ASCII en mundo-vida-ia (pregunta nueva del
+  Ciclo 14, «¿Qué se arregló en mundo-vida-ia para las
+  consolas ASCII?») 0,545 · portafolio publicado (pregunta
+  nueva del Ciclo 14, «¿Dónde está publicado el portafolio
+  de Antonio?») 0,513; fuera
   de tema, la capital de Francia no devuelve
   ningún fragmento ≥ 0,30 y el clima 0,320. La pregunta del
   segundo yo fue el ejemplo bajo umbral de la suite hasta el

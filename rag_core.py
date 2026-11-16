@@ -469,22 +469,28 @@ class RagStore:
                     c["texto"])) / len(raices_pregunta)
             else:
                 en_titulo = en_texto = 0.0
-            relevancia = float(score) + PESO_TITULO * en_titulo \
-                + PESO_TEXTO * en_texto
-            candidates.append((relevancia, float(score), c))
+            # La bonificación viaja con el candidato: la API la expone
+            # por fuente para que la interfaz explique el ranking
+            # (similitud + bonificación = relevancia), en vez de que
+            # una fuente con similitud menor por encima de otra parezca
+            # un error de ordenación.
+            bonificacion = PESO_TITULO * en_titulo + PESO_TEXTO * en_texto
+            relevancia = float(score) + bonificacion
+            candidates.append((relevancia, float(score), bonificacion, c))
         candidates.sort(key=lambda item: (-item[0], -item[1]))
         # Mejor similitud semántica de TODA la consulta (no solo de lo
         # devuelto): es el dato de la puerta de claridad del Ciclo 1 y
         # viaja en cada resultado para que la API lo lea sin recalcular.
         similitud_maxima = max(
-            (score for _, score, _ in candidates), default=None)
+            (score for _, score, _, _ in candidates), default=None)
         results = []
-        for relevancia, score, c in candidates[:k]:
+        for relevancia, score, bonificacion, c in candidates[:k]:
             results.append({
                 "archivo": c["archivo"],
                 "seccion": c["seccion"],
                 "similitud": round(score, 3),
                 "relevancia": round(relevancia, 3),
+                "bonificacion_lexica": round(bonificacion, 3),
                 "similitud_maxima": (
                     round(similitud_maxima, 3)
                     if similitud_maxima is not None else None

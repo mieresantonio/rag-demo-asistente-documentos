@@ -1,5 +1,30 @@
 # Registro de mejoras — mundo-vida-ia
 
+## 2026-11-16 · La demo ya no muere en consolas ASCII
+
+### El fallo — UnicodeEncodeError en el primer print con «ñ»
+
+- **Qué pasaba:** con la E/S forzada a ASCII (p. ej.
+  `PYTHONIOENCODING=ascii`), la demo moría con `UnicodeEncodeError`
+  en el primer `print()` con una «ñ» («5 agentes despiertan en un
+  mundo pequeño»), antes de simular y sin escribir el registro
+  (código de salida 120). Hallazgo de la ronda 22 de la operación
+  del 9 nov 2026, sin corregir hasta hoy.
+- **El arreglo (`simulacion/demo.py`):** `main()` empieza llamando
+  a `asegurar_salida_utf8()`, que reconfigura la salida estándar a
+  UTF-8 con reemplazo de lo no representable; si la salida no
+  admite reconfiguración (p. ej. un `StringIO` en tests), se deja
+  como está. La escritura del registro ya era UTF-8 explícita y no
+  se tocó.
+- **Regresión (`tests/test_invariantes.py`):**
+  `test_modulo_con_consola_ascii_completa_la_demo` corre la demo
+  como módulo en una copia temporal con `PYTHONIOENCODING=ascii` y
+  exige salida 0 y el registro conocido-bueno (MD5
+  `b56a5a928fcf5a2722665c8251a5aa7b`, 375 eventos).
+- **Verificación:** demo con ASCII → salida 0 y MD5 canónico;
+  demo normal → salida 0 y mismo MD5; suite completa **114/114 OK**
+  (113 + 1 nuevo). Ninguna cifra del determinismo se movió.
+
 ## 2026-11-02 · Fase 2, Ciclo 8 (suite de tests permanente)
 
 ### La suite — los invariantes de los ciclos 1-5, fijados como regresión ejecutable

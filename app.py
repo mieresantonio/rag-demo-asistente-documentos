@@ -22,6 +22,8 @@ Arranque:
 Configuración opcional por variables de entorno, con los mismos
 valores por defecto de siempre: RAG_DEMO_HOST (127.0.0.1) y
 RAG_DEMO_PORT (5057). Sin ellas, el comportamiento no cambia.
+Un RAG_DEMO_PORT no numérico o fuera del rango 1-65535 cae al
+5057 con un aviso, en vez de tumbar el arranque.
 
 Errores: también responden en JSON con la forma {"error": "..."}
 las rutas desconocidas (404), los métodos no permitidos (405), los
@@ -49,7 +51,19 @@ MAX_CUERPO_BYTES = 32 * 1024
 HOST = os.environ.get("RAG_DEMO_HOST", "127.0.0.1")
 try:
     PORT = int(os.environ.get("RAG_DEMO_PORT", "5057"))
+    if not 1 <= PORT <= 65535:
+        raise ValueError("fuera del rango 1-65535")
 except ValueError:
+    # Un puerto no numérico o fuera de rango no debe tumbar el
+    # arranque: antes, RAG_DEMO_PORT=-1 o 99999 reventaba en app.run
+    # con OverflowError DESPUÉS del warmup del modelo (decenas de
+    # segundos perdidos), y RAG_DEMO_PORT=0 servía en un puerto
+    # efímero que nadie conoce. Se cae al 5057 de siempre y se avisa.
+    print(
+        "RAG_DEMO_PORT no válido (%r); se usa el puerto 5057."
+        % os.environ.get("RAG_DEMO_PORT"),
+        flush=True,
+    )
     PORT = 5057
 
 app = Flask(__name__)
@@ -194,6 +208,13 @@ def preguntar():
             "archivo": r["archivo"],
             "seccion": r["seccion"],
             "similitud": r["similitud"],
+            # Explicabilidad del ranking híbrido (Ciclo 2): la
+            # relevancia es la similitud semántica más la bonificación
+            # léxica, y es la relevancia —no la similitud— la que
+            # ordena las fuentes. Sin estos dos campos, una fuente
+            # con similitud menor por encima de otra parecía un bug.
+            "relevancia": r["relevancia"],
+            "bonificacion_lexica": r["bonificacion_lexica"],
             "fragmento": r["fragmento"],
         }
         for n, r in enumerate(results, start=1)

@@ -23,9 +23,9 @@ Modos:
     sin   Mueve data/index.faiss a un respaldo temporal, levanta la app
           y comprueba el estado honesto sin índice (health 0/0 y
           «sin_indice», /preguntar 503). Restaura el índice al terminar.
-    con   Levanta la app con el índice presente (28 documentos /
-          568 fragmentos desde el Ciclo 13) y comprueba la ruta
-          feliz y los errores.
+    con   Levanta la app con el índice presente y comprueba la ruta
+          feliz y los errores; los conteos esperados de documentos
+          y fragmentos se leen de data/meta.json.
     ambos (por defecto) Ejecuta «sin» y después «con».
 
 La suite levanta la app en un puerto libre con RAG_DEMO_PORT, la
@@ -54,6 +54,16 @@ if os.path.basename(BASE_DIR) == "tests":
     BASE_DIR = os.path.dirname(BASE_DIR)
 DATA_DIR = os.path.join(BASE_DIR, "data")
 INDEX_PATH = os.path.join(DATA_DIR, "index.faiss")
+META_PATH = os.path.join(DATA_DIR, "meta.json")
+
+
+def meta_esperada():
+    """Lee (documentos, fragmentos) de data/meta.json, la fuente de
+    verdad de la ingesta: quemar los conteos aquí los dejaba viejos
+    en cada ciclo (Ciclo 14: 568 → 572 fragmentos, suite 55/56)."""
+    with open(META_PATH, encoding="utf-8") as fh:
+        meta = json.load(fh)
+    return meta.get("documentos"), meta.get("fragmentos")
 
 PYTHON_POR_DEFECTO = os.environ.get(
     "RAG_TEST_PYTHON",
@@ -224,8 +234,9 @@ def bateria_sin_indice(base):
         h = {}
     comprobar(modo, "health estado «sin_indice»",
               h.get("estado") == "sin_indice", f"estado={h.get('estado')!r}")
-    # Rareza conocida y NO corregida: meta.json en disco dice 27/527,
-    # pero RagStore solo lo carga si existe index.faiss → 0/0 honesto.
+    # Rareza conocida y NO corregida: meta.json en disco dice los
+    # conteos de la ingesta vigente, pero RagStore solo lo carga si
+    # existe index.faiss → 0/0 honesto.
     comprobar(modo, "health 0/0 sin índice (documentos y fragmentos)",
               h.get("documentos") == 0 and h.get("fragmentos") == 0,
               f"documentos={h.get('documentos')!r}, "
@@ -278,8 +289,14 @@ def bateria_con_indice(base):
         h = {}
     comprobar(modo, "health estado «ok» con índice",
               h.get("estado") == "ok", f"estado={h.get('estado')!r}")
-    comprobar(modo, "health 28 documentos / 568 fragmentos (Ciclo 13)",
-              h.get("documentos") == 28 and h.get("fragmentos") == 568,
+    # Los conteos esperados se leen de data/meta.json (fuente de
+    # verdad de la ingesta), no se queman: así un ciclo nuevo no
+    # deja la suite en 55/56.
+    docs_esp, frags_esp = meta_esperada()
+    comprobar(modo, "health %s documentos / %s fragmentos (meta.json)"
+              % (docs_esp, frags_esp),
+              h.get("documentos") == docs_esp
+              and h.get("fragmentos") == frags_esp,
               f"documentos={h.get('documentos')!r}, "
               f"fragmentos={h.get('fragmentos')!r}")
     comprobar(modo, "health modelo_cargado true con índice",

@@ -1231,3 +1231,370 @@
      falladas**, `data/` con los MD5 del Ciclo 13 intactos.
 - **Lista para publicar:** `templates/index.html` e
   `improvement-log.md`.
+
+## 2026-11-16 · Fase 2, Ciclo 14 (octavo refresco del corpus: mundo-vida-ia al día + el renombre publicado)
+
+### Octavo refresco — una copia al día y el corpus al día con el renombre
+
+- **Objetivo:** el contraste copia↔original previo al refresco
+  encontró **1 de 15 copias desactualizada**: la de mundo-vida-ia
+  (`2e56bd99…` frente al original `75eb8184…`). Su original
+  recibió el 16 nov la entrada de la ronda 2 de la operación de
+  mejora (el arreglo UnicodeEncodeError en consolas ASCII,
+  suite 114/114), posterior a la ingesta del Ciclo 13. Las
+  otras 14 copias ya coincidían con su original. Sin tocar
+  código de la app: solo refresco, ingesta, batería y
+  documentación. Respaldo previo del estado del Ciclo 13
+  (artefactos de `data/`, las 15 copias de `corpus-extra/`,
+  README y este registro) en `/tmp/rag-demo-ciclo14-backup/`,
+  antes de tocar nada.
+- **Refresco (`refresh_corpus_extra.py`, idempotente, con
+  verificación MD5 de cada copia contra su original):** cambió
+  **exactamente la única copia esperada**:
+  - `mundo-vida-ia-improvement-log.md`: `2e56bd99…` →
+    `75eb8184…` (16 nov 2026: la demo ya no muere en consolas
+    ASCII — `asegurar_salida_utf8()` al inicio de `main()`,
+    regresión con `PYTHONIOENCODING=ascii`, suite 114/114).
+  El cambio es un añadido puro de la sección nueva al
+  principio del registro (verificado por `diff` contra la
+  copia del Ciclo 13): ningún contenido previo se perdió ni se
+  alteró. Tras el refresco, las 15 copias coinciden por MD5
+  con sus originales (15/15). La exclusión del registro propio
+  del rag-demo se mantiene, por el motivo documentado en el
+  Ciclo 5 (autorreferencia).
+- **Re-ingesta:** mismos 28 documentos, **568 → 572 fragmentos**
+  (+4), con el delta explicado por archivo y solo por archivo
+  (verificado contra `data/chunks.json`): mundo-vida-ia 33 →
+  35 (+2, la entrada nueva) y portafolio-y-empleo 9 → 11 (+2,
+  la sección nueva «Actualización 16 nov 2026 — portafolio
+  publicado y repos ordenados» del archivo vivo, que la
+  ingesta recoge porque el material de `mundo-dirsi/aprendido`
+  se lee directo de su carpeta). Los fragmentos de los otros
+  26 archivos son idénticos en número a los del Ciclo 13.
+- **El renombre, recogido por la ingesta (no a mano):** la
+  ingesta del Ciclo 13 corrió antes de que el renombre
+  Blockali → Block Ethos se publicara en los archivos vivos de
+  `mundo-dirsi/aprendido`, así que esta re-ingesta lo recoge
+  por primera vez: 3 fragmentos de blockchain-web3.md y 2 de
+  despliegue.md cambian SOLO por el renombre (verificado por
+  comparación con el renombre normalizado: las diferencias
+  residuales son desplazamientos de ±3 caracteres en los
+  bordes de troceado, consecuencia directa de que «Block
+  Ethos» tiene 3 caracteres más que «Blockali»; ningún otro
+  contenido cambia). Las menciones de «Blockali» en
+  `data/chunks.json` pasan de 8 a **1**, y la que queda es la
+  nota histórica del propio archivo vivo («renombrado desde
+  Blockali por orden de Antonio», en la sección nueva de
+  portafolio-y-empleo): contenido actual, no residuo.
+- **Nota de proceso (misma que en el Ciclo 13):** la ingesta
+  corrió desde el clon de trabajo, así que las rutas citadas
+  de `corpus-extra/` salieron con el prefijo largo del clon;
+  se corrigieron a la forma canónica `rag-demo/corpus-extra/`
+  con un script desechable (`/tmp/rag-ciclo14-arreglar-rutas.py`,
+  solo reescribe ese prefijo: 425 fragmentos + 15 entradas de
+  meta), mismo formato que `build_index`, con verificación de
+  que textos, secciones y orden no cambiaban (0 rutas del clon
+  restantes). El índice FAISS no guarda rutas, así que no se
+  tocó. La próxima ingesta desde la semilla reproducirá el
+  mismo contenido sin este paso.
+- **Verificaciones:**
+  1. `py_compile` no aplica: este ciclo no toca código (solo
+     corpus, artefactos, README y este registro).
+  2. Batería completa por la API real, con el servidor levantado
+     en el puerto 5058 (modelo cargado en el arranque en 16,9 s):
+     `/api/health` → `estado: "ok"`, `modelo_cargado: true`,
+     **28 documentos, 572 fragmentos**, coherentes con
+     `data/meta.json`. Las 16 preguntas conocidas-buenos,
+     **idénticas** (REA 0,526 · automatizaciones 0,699 · 45/90
+     0,669 · despliegue 0,502 con despliegue.md en las
+     posiciones 1–3 · barbería Ciclo 1 0,557 · direcciones
+     tx-builder 0,522 · capital de Francia sin fragmentos ≥
+     0,30 · clima 0,320, baja · nft-studio 0,570 ·
+     mundo-vida-ia 0,562 · 9/10 0,675 · anti-phishing 0,597 ·
+     smoke barbería 0,530 · suelo tx-builder 0,674 ·
+     verify-catalog 0,581 · blockchain y web3 0,799, ahora con
+     la sección «Block Ethos: un producto real, no una demo»
+     entre sus fuentes), y las 2 preguntas nuevas del Ciclo 13
+     también idénticas (segundo yo 0,545 · toReversed 0,538):
+     cero degradación. Dos preguntas nuevas:
+     - NUEVA · ASCII («¿Qué se arregló en mundo-vida-ia para
+       las consolas ASCII?») → `confianza: "alta"`, máxima
+       **0,545**, las 4 fuentes son el registro de
+       mundo-vida-ia, las 2 primeras en su sección exacta de
+       la entrada nueva («El fallo — UnicodeEncodeError en el
+       primer print con «ñ»»).
+     - NUEVA · Portafolio («¿Dónde está publicado el
+       portafolio de Antonio?») → alta, máxima **0,513**, las
+       fuentes 1, 2 y 4 son portafolio-y-empleo.md, las 2
+       primeras en su sección exacta de la actualización del
+       16 nov. Matiz honesto: la formulación alternativa
+       «¿Qué pasa con mundo-vida-ia en una consola ASCII?»
+       NO supera la puerta de claridad (máxima 0,489,
+       `confianza: "baja"`, sin fuentes): la pregunta que
+       funciona es la que nombra el arreglo, y así queda
+       documentada.
+     Servidor apagado al terminar (puerto 5058 sin respuesta,
+     comprobado).
+  3. Por contenido (V3): artefactos nuevos — `data/index.faiss`
+     `225b78dce24f1cc7f12bb3b84f304937`, `data/chunks.json`
+     `5c2feef58338c5ed4c73b4e176cc7e39`, `data/meta.json`
+     `fc10ab6cf1b72ae1bf9dd4054a665d6e` — frente a los del
+     Ciclo 13 (`610d0527…`, `526c73b5…`, `5ce87e38…`), con el
+     delta explicado solo por el refresco, la sección nueva
+     de portafolio-y-empleo y el renombre (arriba). La
+     dirección nueva de Ana (`0x48227ad1…4678`) sigue en 2
+     fragmentos de la sección T-A1 de tx-builder. Sin cambios
+     en `rag_core.py` ni en `app.py`: solo la copia de
+     mundo-vida-ia en `corpus-extra/`, los artefactos de
+     `data/`, el README (conteos 28/572, calibración
+     re-verificada, preguntas nuevas) y este registro. Nota
+     de publicación: `data/index.faiss` no se publica
+     (binario); se regenera con `python ingest.py`.
+  4. Suite de regresión: **55/56 comprobaciones superadas**;
+     el único fallo es el esperado: la comprobación que fija
+     568 fragmentos (`health 28 documentos / 568 fragmentos
+     (Ciclo 13)`) ahora ve 572. La actualización de esa
+     constante a 572 es del trabajador de código (la suite
+     es suya); el resto de la suite —incluidas las
+     comprobaciones del segundo yo, la interfaz y el cierre
+     con MD5 de `data/` intactos— sigue en verde. El README
+     ya no afirma 568 en ningún sitio.
+- **Lista para publicar (la publica el coordinador):**
+  `corpus-extra/mundo-vida-ia-improvement-log.md`,
+  `data/chunks.json`, `data/meta.json`, `README.md` e
+  `improvement-log.md`. `data/index.faiss` NO viaja (binario; se
+  regenera con `python ingest.py`).
+
+## 2026-11-16 · Mapa de cobertura: una pregunta canario por documento (2ª tanda)
+
+### Cobertura demostrada — los 28 documentos, uno a uno
+
+- **Objetivo:** la batería solo vigilaba 13 de los 28 documentos
+  (REA, automatizaciones, 45/90, despliegue, barbería,
+  tx-builder, nft-studio, mundo-vida-ia, anti-phishing,
+  blockchain-web3, síntesis de CenteIA, block-explorer y
+  portafolio-y-empleo —este último desde la pregunta nueva del
+  Ciclo 14—). Los otros 15 no tenían ninguna pregunta que
+  demostrara que son recuperables: el corpus podía contener
+  documentos que ninguna pregunta alcanza jamás y nadie lo
+  sabría. Este mapa formula una pregunta canario por cada uno
+  de esos 15 y la mide contra la API real: debe recuperar ESE
+  documento en el top-4 con `confianza: "alta"`.
+- **Resultado: 15 de 15 recuperables, todos en 1.ª posición.**
+  Ningún documento muerto. La tabla registra la formulación
+  que funciona, la similitud máxima medida y la posición del
+  documento objetivo entre las fuentes (top-4).
+
+  | Documento | Pregunta canario | Sim. máx. | Pos. |
+  |---|---|---|---|
+  | `analisis.md` | ¿Cuáles son las 25 tareas que la IA ya puede hacer por ti según los materiales de CenteIA? | 0,694 | 1.ª (3 de 4 fuentes) |
+  | `guia-diseno-web-centeia-evaluacion.md` | ¿Qué herramientas recomienda la guía de diseño web de CenteIA para diseñar con Claude Code? | 0,696 | 1.ª (las 4 fuentes) |
+  | `regalo-1-trabajo-delegado-evaluacion.md` | ¿Cuál es la regla de oro anti-invención del primer trabajo delegado a la IA? | 0,580 | 1.ª (3 de 4 fuentes) |
+  | `api-segundo-yo-improvement-log.md` | ¿Qué validación real de payloads se añadió a la API del segundo yo? | 0,569 | 1.ª (3 de 4 fuentes) |
+  | `biblioteca-prompts-improvement-log.md` | ¿Qué pasó con los 15 roles anunciados en la biblioteca de prompts si solo 8 tenían prompt? | 0,637 | 1.ª (las 4 fuentes) |
+  | `contract-play-improvement-log.md` | ¿Qué cambió en el simulador de contratos de contract-play para alinearse con los fragmentos? | 0,614 | 1.ª (las 4 fuentes) |
+  | `dao-vote-improvement-log.md` | ¿Por qué los filtros Activas y Cerradas de DAO Vote devolvían siempre 0? | 0,693 | 1.ª (las 4 fuentes) |
+  | `gas-calc-improvement-log.md` | ¿Qué corrigió gas-calc sobre el wei exacto y EIP-1559? | 0,710 | 1.ª (las 4 fuentes) |
+  | `hash-lab-improvement-log.md` | ¿Qué es la validez transitiva en hash-lab y qué cambió en Restaurar? | 0,707 | 1.ª (las 4 fuentes) |
+  | `segundo-yo-improvement-log.md` | ¿Qué decisión visual fuerte se tomó en la app segundo-yo con la ficha como tarjeta de identidad? | 0,706 | 1.ª (las 4 fuentes) |
+  | `token-explorer-improvement-log.md` | ¿Por qué se renombró un token en token-explorer? | 0,538 | 1.ª (las 4 fuentes) |
+  | `wallet-sim-improvement-log.md` | ¿Por qué la cartera nueva de wallet-sim empieza a 0 y qué hace el faucet? | 0,512 | 1.ª (las 4 fuentes) |
+  | `agentes-e-ia.md` | ¿Qué es un agente de código en la práctica? | 0,821 | 1.ª (3 de 4 fuentes) |
+  | `desarrollo-web.md` | ¿Qué principio de desarrollo web dice que cada app debe tener una sola especialización? | 0,665 | 1.ª (3 de 4 fuentes) |
+  | `herramientas-y-conexiones.md` | ¿Por qué el conector de GitHub no crea repositorios? | 0,713 | 1.ª (3 de 4 fuentes) |
+
+- **Matices honestos, medidos y no escondidos:**
+  - `analisis.md` fue el único que resistió la primera
+    formulación: la pregunta sobre la ficha
+    «Cuando ____, me gustaría que mi segundo yo ____» NO
+    supera la puerta de claridad (máxima 0,403,
+    `confianza: "baja"`, sin fuentes): los huecos en blanco
+    de la plantilla no son un buen texto de consulta. Las
+    otras cuatro formulaciones probadas sí recuperan el
+    documento en 1.ª posición (25 tareas 0,694 · glosario
+    IA sin jerga 0,553 · los 4 documentos analizados 0,580 ·
+    pre-diseñar tu segundo yo 0,558),
+    así que el documento no es contenido muerto: es la
+    formulación con huecos la que falla. La canario que
+    queda es la de las 25 tareas (la más alta y la que
+    más fuentes del documento reúne).
+  - Los canarios más justos son los de `wallet-sim`
+    (0,512) y `token-explorer` (0,538): pasan la puerta
+    0,50 con poco margen. Son los primeros candidatos a
+    vigilar si el corpus crece o se re-trocea; si alguno
+    cae bajo 0,50 en un refresco futuro, la regresión se
+    verá aquí antes que en ningún otro sitio.
+  - Los canarios de los registros de mejora funcionan
+    porque nombran el hallazgo concreto de cada registro
+    (el filtro que devolvía 0, el wei exacto, los 15
+    roles): la pregunta genérica («¿qué se arregló en
+    X?») no se probó y no se promete. Igual que con
+    toReversed en el Ciclo 13, la pregunta que funciona
+    es la que nombra el método y la app.
+- **Verificaciones:**
+  1. Batería completa de los 15 canarios por la API real,
+     servidor levantado en el puerto 5059 con el índice
+     del Ciclo 14 (`/api/health` → `estado: "ok"`,
+     `modelo_cargado: true`, 28 documentos, 572
+     fragmentos): cada cifra de la tabla es la respuesta
+     real, copiada tal cual, con su confianza y sus
+     fuentes registradas. Segunda corrida completa de la
+     batería (servidor re-levantado): idéntica en confianza,
+     similitud y posición en los 15 canarios. Servidor
+     apagado al terminar
+     (puerto 5059 sin respuesta, comprobado).
+  2. Controles de no-regresión (4 preguntas conocidas
+     de la batería, mismas respuestas que en el Ciclo
+     14): REA 0,526 · blockchain y web3 0,799 · clima
+     0,320, baja · segundo yo 0,545. Cero degradación,
+     como corresponde a una tanda que no toca el índice.
+  3. Solo lectura + documentación: **sin re-ingesta**.
+     `data/` queda intacto: MD5 de `chunks.json`
+     (`5c2feef58338c5ed4c73b4e176cc7e39`) y `meta.json`
+     (`fc10ab6cf1b72ae1bf9dd4054a665d6e`) idénticos antes
+     y después de la tanda (los del Ciclo 14). Ningún
+     archivo del corpus cambió.
+- **Lista para publicar (la publica el coordinador):**
+  `README.md` (puntero al mapa en la sección del corpus) e
+  `improvement-log.md` (esta entrada). Nada más: `data/`,
+  `corpus-extra/` y el código no cambian en esta tanda.
+
+## 2026-11-16 · Auditoría de frontera: qué NO está en el corpus y por qué (2ª tanda)
+
+### La frontera, decidida por escrito — insumo para el Ciclo 15
+
+- **Objetivo:** el corpus crece por inercia (lo que cae en tres
+  carpetas) sin que nadie haya decidido su frontera. Esta
+  auditoría clasifica cada documento vecino con una decisión
+  explícita — ingerir, excluir o pendiente de Antonio — con su
+  motivo, citando el contenido real de cada archivo. **Nada se
+  ingiere en esta tanda:** la auditoría es el entregable; la
+  ingesta que de ella salga sería el Ciclo 15.
+- **Criterio que manda (no negociable):** `data/chunks.json` se
+  publica en el repo del rag-demo, así que ingerir un documento
+  es publicarlo por la puerta de atrás. Todo lo que contenga
+  perfil personal, inventario de accesos o criterios de
+  evaluación que el solucionador no debe ver queda fuera
+  aunque tenga valor consultivo. Y todo lo que sea plantilla
+  con huecos, índice o diario de trabajo queda fuera porque
+  contamina la recuperación (precedente: la exclusión del
+  registro propio en el Ciclo 5, y el canario de la ficha de
+  `analisis.md` de esta misma tanda, que no supera la puerta
+  con sus huecos en blanco).
+- **Candidatos:** los 11 `.md` de la raíz de `mundo-dirsi/`
+  (lista generada por `ls`, no de memoria) más el segundo
+  anillo (subcarpetas de `mundo-dirsi/`). `centeia-materiales/`
+  no aporta candidatos: sus 5 archivos ya están todos en el
+  corpus (verificado por `ls`).
+
+  | Documento (raíz de `mundo-dirsi/`) | Decisión | Motivo |
+  |---|---|---|
+  | `MANUAL-AGENTES.md` (16,6 KB) | **Ingerir** | Método portable y público por declaración propia («no contiene la memoria personal completa… este manual es solo el método, que sí es portable y público»). Cubre skills, Cowork, Codex, Claude Code y ChatGPT Work: material nuevo frente a `agentes-e-ia.md`. |
+  | `METODO-CLAUDE.md` (12,3 KB) | **Ingerir** | Destilación a procedimiento con redacción propia; solo método (revisión de sistemas, filtro de selección, prueba de «realmente hecho»). Sin datos personales. |
+  | `METODO-GROK.md` (19,7 KB) | **Ingerir** | Igual que el de Claude, con su advertencia de origen declarada (método declarado por el modelo, débil como testimonio). Aporta lo único: cuándo usar el instrumento de Grok y cuándo el de Claude. |
+  | `PROTOCOLO-REFUTACION.md` (8,7 KB) | **Ingerir** | Método (pasada adversarial antes de entregar lo decisivo), sin datos personales. Los errores que cita son del trabajo del agente, ya públicos en `mundo-dirsi`. |
+  | `DESTILADO-LOVABLE-GPTENGINEER.md` (10,5 KB) | **Ingerir** | Investigación leída de primera mano, redacción propia, repo MIT; destila método, no republica código. Todo el contenido es información pública. |
+  | `METODO-CLAUDE-PLAYBOOK.md` (11,1 KB) | **Pendiente de Antonio** | Solo método, sin datos personales («destilación con redacción propia»), así que por contenido podría ingerirse — pero su propia publicación en `mundo-dirsi` está pendiente de su aprobación (bandeja del 15 nov, ítem 6). Ingerirlo aquí antes lo publicaría por la puerta de atrás. Se ingiere solo cuando él apruebe su publicación. |
+  | `RECOPILACION-MATERIALES.md` (72 KB, 1.150 líneas) | **Pendiente de Antonio** | Tres problemas a la vez: (1) su §2 es «Quién es Antonio (10 líneas)» — perfil personal en un corpus público; (2) su §3 duplica material ya ingerido (P1–P3 resumen los mismos documentos que `analisis.md`, la guía de diseño y el regalo-1); (3) con 72 KB sería el documento más grande del corpus (el mayor hoy es el registro de la barbería, 43 KB), con riesgo de dominar la recuperación. Lo valioso es solo su §4 (conocimiento destilado usable: criterio anti-genérico, mapa de delegación, estructuras del segundo yo). Propuesta: ingerir solo el §4 recortado, si Antonio lo aprueba. |
+  | `CALIBRACION.md` (12 KB) | **Excluir** | Registro de medición interno: afirmaciones decisivas entregadas a Antonio con sus veredictos. No es conocimiento consultable; ingerirlo expondría su historial de decisiones y haría que la demo respondiera sobre Antonio mismo. Además es vivo: cada veredicto lo cambia. |
+  | `BANCO-DE-PRUEBAS.md` (13,7 KB) | **Excluir** | Por diseño, «el solucionador no recibe los criterios»: ingerir las fichas con sus criterios de aprobado en un corpus público pondría las respuestas del examen al alcance del examinado. |
+  | `INVENTARIO-CAPACIDADES.md` (6,4 KB) | **Excluir** | Inventario operativo: máquina, herramientas, accesos y automatismos. Dos motivos: expone accesos, y caduca con cada despliegue de la VM («una foto vieja no describe la máquina de hoy») — ingerirlo congelaría datos que se vuelven falsos. |
+  | `README.md` de `mundo-dirsi` (5,9 KB) | **Excluir** | Es un índice con punteros, no contenido consultable: sus fragmentos de navegación competirían con los documentos reales que describe. |
+
+  Segundo anillo (subcarpetas de `mundo-dirsi/`, mismo criterio):
+
+  | Documento | Decisión | Motivo |
+  |---|---|---|
+  | `consultas/` (4 plantillas/checklists, 19–43 líneas) | **Excluir** | Plantillas con huecos por rellenar y listas de verificación de trabajo: la demo citaría casillas vacías como respuesta. |
+  | `crecimiento/log.md` (313 líneas) | **Excluir** | Bitácora de trabajo interno, autorreferente como el registro propio del Ciclo 5; vivo y creciente. |
+  | `herramientas/README.md` (100 líneas) | **Excluir** | Describe herramientas propias (un scaffolder de código): código y uso interno, no documento consultable. |
+  | `herramientas/sitios-40-evaluacion.md` (54 líneas) | **Excluir** | Lista de enlaces externos evaluada una vez (27 oct): se desactualiza y no es conocimiento propio duradero. Si Antonio quiere que la demo responda sobre herramientas web, se re-evalúa primero. |
+  | `por-aprender/preguntas-abiertas.md` (253 líneas) | **Excluir** | Es el anti-corpus por definición: preguntas que Dirsi todavía NO puede responder. Ingerirlas haría que la demo citara sus propias ignorancias como si fueran respuestas. |
+  | `por-aprender/rutas.md` (619 líneas) | **Excluir** | Plan de aprendizaje interno, aspiracional («por aprender»): no son hechos verificados sino caminos por construir. |
+
+- **La frontera, medida (sondeo contra la API real, índice del
+  Ciclo 14, servidor levantado en el puerto 5059):** cinco
+  preguntas que hoy caen fuera del corpus, con su respuesta
+  real tal cual:
+  - «¿Cómo se monta un agente con el método de Antonio?» →
+    alta 0,518, pero las fuentes son genéricas (síntesis y
+    `agentes-e-ia.md`): el corpus responde el *tema* pero
+    no el *método* — las skills, Cowork y Codex del Manual
+    no están. Ingerir el Manual cierra este hueco.
+  - «¿Qué es gpt-engineer y qué tiene que ver con
+    Lovable?» → **baja 0,466, sin fuentes.** Hueco limpio
+    y demostrado: el destilado no está y nada lo cubre.
+  - «¿Qué es la regla de tres del playbook del ingeniero
+    senior?» → alta 0,515, pero las fuentes son
+    documentos equivocados (sala limpia de
+    `ingenieria-inversa.md`, catálogo de la síntesis):
+    **falso positivo con confianza alta.** La demo
+    responde con seguridad algo que no sabe. Ingerir el
+    Playbook (cuando Antonio apruebe su publicación)
+    corrige exactamente este caso.
+  - «¿Cómo se intenta refutar algo antes de entregárselo
+    a Antonio?» → **baja 0,313, sin fuentes.** Hueco
+    limpio: el protocolo no está y nada lo cubre.
+  - «¿Qué afirmaciones refutadas hay en el registro de
+    calibración?» → alta 0,580, con fuentes equivocadas
+    (un caso de anti-phishing, una entrada de
+    mundo-vida-ia): **falso positivo con confianza alta
+    sobre un documento excluido a propósito.** Excluir
+    `CALIBRACION.md` no hace que la demo se niegue a
+    responder sobre calibración; hace que responda desde
+    vecinos sin relación. Es un límite de la puerta de
+    honestidad (0,50), no de la frontera: queda anotado
+    como trabajo futuro de código, fuera de esta tanda.
+- **Verificaciones:**
+  1. Lista de candidatos generada por `ls`/`find` (11 en la
+     raíz, 9 en el segundo anillo); cada decisión cita el
+     contenido real leído del archivo (tamaño, secciones,
+     citas literales donde importan).
+  2. Sondeo de 5 preguntas por la API real con el servidor
+     levantado (puerto 5059, índice del Ciclo 14):
+     cifras y fuentes copiadas tal cual. Servidor apagado
+     al terminar (puerto 5059 sin respuesta, comprobado).
+  3. Solo lectura + documentación: **sin re-ingesta, sin
+     cambios en el corpus.** `data/` intacto: MD5 de
+     `chunks.json` (`5c2feef58338c5ed4c73b4e176cc7e39`) y
+     `meta.json` (`fc10ab6cf1b72ae1bf9dd4054a665d6e`)
+     idénticos antes y después de la tanda (los del
+     Ciclo 14).
+- **Lista para publicar (la publica el coordinador):**
+  `README.md` (puntero a la auditoría en la sección del
+  corpus) e `improvement-log.md` (esta entrada). Nada más:
+  `data/`, `corpus-extra/` y el código no cambian en esta
+  tanda.
+
+## 2026-11-16 · «Pruébala en 2 minutos»: preguntas guiadas en el README (2ª tanda, vuelta extra)
+
+### La demo se presenta sola
+
+- **Objetivo:** el README explicaba la API pero no invitaba a
+  probarla: un visitante tenía que leer el registro de mejoras
+  para saber qué preguntar. Nueva sección «Pruébala en 2
+  minutos» con 6 comandos `curl` copiables, cada uno con lo
+  que debe responder (confianza, similitud máxima medida,
+  fuente que debe encabezar).
+- **Las 6 preguntas (cifras medidas el 16 nov 2026 contra la
+  API real, índice del Ciclo 14):** REA 0,526, alta, top
+  `ingenieria-inversa.md` · blockchain y web3 0,799, alta, 4
+  fuentes de `blockchain-web3.md` · despliegue 0,502, alta,
+  top `despliegue.md` · segundo yo 0,545, alta, top la
+  síntesis de CenteIA · gas-calc 0,710, alta, 4 fuentes de su
+  registro · clima 0,320, baja, sin fuentes (la API dice que
+  no tiene resultados claros en vez de rellenar).
+- **Verificaciones:**
+  1. Los 6 comandos `curl` se ejecutaron contra el servidor
+     levantado (puerto 5059, índice del Ciclo 14; en la
+     sección van con el puerto 5057, el de por defecto — el
+     puerto no afecta a las respuestas): cada cifra de la
+     sección es la respuesta real, copiada tal cual. Servidor
+     apagado al terminar (puerto 5059 sin respuesta,
+     comprobado).
+  2. Solo documentación: `data/` intacto (MD5 de
+     `chunks.json` y `meta.json`, los del Ciclo 14,
+     idénticos antes y después).
+- **Lista para publicar (la publica el coordinador):**
+  `README.md` (sección nueva) e `improvement-log.md` (esta
+  entrada). Nada más.
