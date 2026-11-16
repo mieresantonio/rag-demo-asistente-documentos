@@ -1,6 +1,10 @@
 """API Flask del RAG demo.
 
 Endpoints:
+    GET  /              -> interfaz web mínima (una sola página, sin
+                          recursos externos): pregunta desde el navegador
+                          y muestra la respuesta con sus fuentes citadas.
+                          Usa /api/health y /preguntar; la API no cambia.
     GET  /api/health   -> estado y conteos (documentos, fragmentos)
     POST /preguntar    -> {"pregunta": "..."} devuelve respuesta extractiva
                           compuesta desde los fragmentos + fuentes citadas.
@@ -26,7 +30,7 @@ internos (500), en vez de las páginas HTML por defecto de Flask.
 """
 import os
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, render_template, request
 
 from rag_core import (
     MODEL_NAME,
@@ -83,6 +87,15 @@ def error_413(_error):
 @app.errorhandler(500)
 def error_500(_error):
     return jsonify({"error": "Error interno del servidor."}), 500
+
+
+@app.get("/")
+def interfaz():
+    # La interfaz es una sola página autocontenida (templates/index.html):
+    # sin recursos externos, sin CSS ni JS separados, para que la demo
+    # se pueda abrir tal cual. Toda la lógica vive en /api/health y
+    # /preguntar; esta ruta solo sirve la página.
+    return render_template("index.html")
 
 
 @app.get("/api/health")

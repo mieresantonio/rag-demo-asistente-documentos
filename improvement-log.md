@@ -1032,3 +1032,202 @@
   `data/chunks.json`, `data/meta.json`, `README.md` e
   `improvement-log.md`. `data/index.faiss` NO viaja (binario; se
   regenera con `python ingest.py`).
+
+## 2026-11-16 · Interfaz web mínima (segunda mitad de la ruta de mejora nº 5)
+
+### RAG-UI — la demo solo se podía probar con curl
+
+- **Hallazgo:** la demo no tenía ninguna interfaz visual: para
+  probarla había que conocer la API y usar curl. La ruta de mejora
+  nº 5 del README pedía «despliegue y una interfaz web mínima de
+  chat» y la interfaz seguía pendiente.
+- **Cambio:** `GET /` sirve una sola página autocontenida
+  (`templates/index.html`, sin recursos externos: cero URLs
+  absolutas, CSS y JS en línea) que pregunta desde el navegador y
+  muestra la respuesta extractiva con sus fuentes citadas, la
+  confianza y la similitud máxima. La página lee `/api/health` al
+  cargar y muestra el estado real del índice (documentos,
+  fragmentos, modelo); sin índice avisa y desactiva el formulario.
+  El botón «Preguntar» se deshabilita con el campo vacío, hay
+  contador de caracteres (máx. 1000, igual que la API), estado de
+  carga, caja de error con el mensaje JSON de la API y respeto a
+  `prefers-reduced-motion`. Los fragmentos se escapan antes de
+  insertarlos en el DOM (vienen de los documentos). `app.py` solo
+  gana la ruta y su docstring; la API no cambia: `GET /` era 404
+  y ahora es la interfaz, el resto de rutas y errores en JSON
+  quedan iguales. El README documenta la interfaz, la tabla de
+  piezas y la ruta nº 5 (queda solo el despliegue).
+- **Verificaciones:**
+  1. `py_compile` limpio en `app.py`, `rag_core.py` y
+     `tests_regresion_api.py`.
+  2. Smoke real con el servidor levantado: `GET /` 200
+     `text/html`, 12.841 bytes, cero URLs absolutas;
+     `/api/health` «ok», 27/527; `POST /preguntar` con
+     «¿Qué es REA y para qué sirve?» → confianza alta,
+     similitud máxima 0,526 (el valor calibrado del README);
+     `POST /` → 405 en JSON.
+  3. Interacción real con Playwright (Chromium headless,
+     script desechable): escritorio 1280×800 y móvil 390×844 —
+     estado de salud visible, botón deshabilitado en vacío y
+     habilitado con texto, contador 29/1000, respuesta con
+     «Confianza alta», similitud 0,526 y 4 fuentes; cero errores
+     de JavaScript. Capturas revisadas: un defecto visual
+     corregido (el punto de estado saltaba a su propia línea
+     en móvil; `#estado-texto` ahora ocupa el ancho restante
+     con `min-width: 0`) y re-verificado tras reiniciar el
+     servidor (Flask cachea la plantilla sin modo debug).
+  4. Suite de regresión ampliada con `bateria_interfaz` (6
+     comprobaciones por modo: 200 en HTML, formulario,
+     cero URLs absolutas, llamadas relativas, sección de
+     fuentes, POST / 405) y el chequeo de 404 de `GET /`
+     retirado (ya no es 404): **54/54 comprobaciones
+     superadas, 0 falladas**, `data/` con los MD5 intactos
+     (los del Ciclo 12).
+- **Lista para publicar:** `app.py`, `templates/index.html`,
+  `tests_regresion_api.py`, `README.md` e `improvement-log.md`.
+  `data/index.faiss` NO viaja (binario; se regenera con
+  `python ingest.py`).
+
+## 2026-11-16 · Fase 2, Ciclo 13 (séptimo refresco del corpus: la síntesis de CenteIA + los registros del 9-10 nov)
+
+### Séptimo refresco — la síntesis que faltaba y 8 registros al día
+
+- **Objetivo:** dos deudas en una. (1) La síntesis de los vídeos
+  de CenteIA (`sintesis-videos-2026-11-04.md`, 29 fragmentos)
+  nunca se había ingerido: se creó el 4 nov, después de la
+  ingesta del Ciclo 12, y la pregunta «¿Qué es el segundo yo
+  24/7 de CenteIA?» seguía sin respuesta clara por eso —era el
+  ejemplo bajo umbral de la suite—. (2) Ocho registros de
+  `corpus-extra/` quedaron desactualizados por el trabajo de
+  mejora del 9-10 nov (pasada de inmutabilidad en las apps web3
+  y resto de entradas). Sin tocar código de la app: solo
+  refresco, ingesta, batería y documentación.
+- **Refresco (`refresh_corpus_extra.py`, idempotente, con
+  verificación MD5 de cada copia contra su original):** cambiaron
+  exactamente las 8 copias que el contraste previo copia↔original
+  marcaba desactualizadas (las otras 7 ya coincidían):
+  `segundo-yo` (`1d80e35b…` → `f5a021f7…`),
+  `wallet-sim` (`dde6c1d9…` → `a78b8780…`),
+  `token-explorer` (`2c1de334…` → `327d4bc2…`),
+  `tx-builder` (`b96e9f43…` → `f12bae31…`),
+  `block-explorer` (`5e701d51…` → `327d79b6…`),
+  `hash-lab` (`faf6350c…` → `e6bed7cd…`),
+  `contract-play` (`087489fc…` → `9f6307a5…`) y
+  `dao-vote` (`0e52d126…` → `1d923dbd…`). Tras el refresco, las
+  15 copias coinciden por MD5 con sus originales (15/15). La
+  exclusión del registro propio del rag-demo se mantiene, por el
+  motivo documentado en el Ciclo 5 (autorreferencia).
+- **Re-ingesta:** 27 → **28 documentos, 527 → 568 fragmentos**
+  (+41), con el delta explicado por archivo y solo por archivo
+  (verificado contra `data/chunks.json`): la síntesis nueva
+  (+29); block-explorer 26 → 29 (+3), hash-lab 26 → 27 (+1),
+  token-explorer 22 → 26 (+4), tx-builder 26 → 27 (+1),
+  wallet-sim 21 → 24 (+3). Segundo-yo, contract-play y dao-vote
+  cambiaron contenido sin cambiar su conteo de fragmentos.
+- **Nota de proceso (honesta, con efecto documentado):** la
+  ingesta corrió desde el clon de trabajo y no desde la semilla,
+  así que `rag_core.py` calculó las rutas citadas de
+  `corpus-extra/` relativas a `~/workspace` con el prefijo largo
+  del clon (`mejora-repos-2026-11-16/clones/rag-demo-
+  asistente-documentos/corpus-extra/...`) en vez de la forma
+  canónica (`rag-demo/corpus-extra/...`). La ruta citada forma
+  parte de la bonificación léxica de la búsqueda, así que no era
+  solo cosmética: se corrigió con un script desechable que solo
+  reescribe ese prefijo en `chunks.json` y `meta.json` (423
+  fragmentos + 15 entradas de meta), con el mismo formato de
+  escritura de `build_index` (chunks sin indent, meta con
+  indent=2) y verificando antes de escribir que textos,
+  secciones y orden no cambiaban y que no quedaba ninguna ruta
+  del clon (0 restantes). El índice FAISS no guarda rutas, así
+  que no se tocó. La próxima ingesta desde la semilla
+  reproducirá el mismo contenido sin este paso.
+- **Verificaciones:**
+  1. `py_compile` limpio en `app.py`, `rag_core.py`,
+     `ingest.py`, `refresh_corpus_extra.py` y
+     `tests_regresion_api.py`.
+  2. Batería completa por la API real, con el servidor levantado
+     (modelo cargado en el arranque en ~30 s): `/api/health` →
+     `estado: "ok"`, `modelo_cargado: true`, **28 documentos,
+     568 fragmentos**, coherentes con `data/meta.json`. Las 16
+     preguntas conocidas-buenos, **idénticas** (REA 0,526 ·
+     automatizaciones 0,699 · 45/90 0,669 · despliegue 0,502 ·
+     barbería Ciclo 1 0,557 · direcciones tx-builder 0,522 ·
+     capital de Francia sin fragmentos ≥ 0,30 · clima 0,320 ·
+     nft-studio 0,570 · mundo-vida-ia 0,562 · 9/10 0,675 ·
+     anti-phishing 0,597 · smoke barbería 0,530 · suelo
+     tx-builder 0,674 · verify-catalog 0,581 · blockchain y
+     web3 0,799): cero degradación. Dos preguntas nuevas:
+     - NUEVA · Segundo yo («¿Qué es el segundo yo 24/7 de
+       CenteIA?») → `confianza: "alta"`, máxima **0,545**, 3
+       de las 4 fuentes son la síntesis (top: su sección del
+       directo extra «Haz visible el valor de tu segundo yo»).
+       Era el ejemplo bajo umbral de la suite hasta el Ciclo
+       12; el refresco lo convierte en respuesta clara, que es
+       exactamente lo que debía pasar.
+     - NUEVA · toReversed («¿Qué cambió toReversed en
+       block-explorer?») → alta, máxima **0,538**, las 4
+       fuentes son el registro de block-explorer, 3 en su
+       sección exacta del Ciclo 12. (La formulación genérica
+       «¿Qué cambio de inmutabilidad se aplicó a las apps
+       web3?» recupera `blockchain-web3.md`, no los registros:
+       la pregunta que funciona es la que nombra el método y
+       la app, y así queda documentada.)
+  3. Por contenido (V3): artefactos nuevos — `data/index.faiss`
+     `610d0527256873c305926d849f572cb0`, `data/chunks.json`
+     `526c73b5b0ee07c19d27e878e83c1bfa`, `data/meta.json`
+     `5ce87e3859c465f06838dabf9ae456cd` — frente a los del
+     Ciclo 12 (`e2f45d08…`, `d6a836c9…`, `1daa24cc…`), con el
+     delta explicado solo por la síntesis y los 8 registros
+     (arriba). Matiz honesto, medido y no escondido: la
+     dirección nueva de Ana (`0x48227ad1…4678`) sigue en 2
+     fragmentos de la sección T-A1, pero en la pregunta de
+     direcciones ahora aparece en la fuente **[3]** (similitud
+     0,433) en vez de la [1] como en los ciclos anteriores:
+     el re-troceado tras el refresco del registro reordenó
+     los fragmentos dentro de la misma sección. La
+     recuperación sigue siendo correcta (documento y sección
+     exactos, dirección en el top-4 citado), no es una
+     pérdida.
+  4. Suite de regresión actualizada al Ciclo 13 (conteos
+     28/568; el clima como pregunta bajo umbral, 0,320 exacto;
+     dos comprobaciones nuevas del segundo yo: alta, 0,545 y
+     top la síntesis): **56/56 comprobaciones superadas, 0
+     falladas**, `data/` con los MD5 intactos tras la suite.
+     El README actualiza los conteos, la calibración (Ciclo 13
+     re-verificado, preguntas nuevas, cambio del ejemplo bajo
+     umbral) y la sección del corpus.
+- **Lista para publicar (la publica el coordinador):**
+  `corpus-extra/` (8 registros actualizados), `data/chunks.json`,
+  `data/meta.json`, `tests_regresion_api.py`, `README.md` e
+  `improvement-log.md`. `data/index.faiss` NO viaja (binario; se
+  regenera con `python ingest.py`).
+
+## 2026-11-16 · Interfaz web: sin índice, el campo también se deshabilita
+
+### RAG-UI-2 — el campo invitaba a escribir una pregunta que no se podía enviar
+
+- **Hallazgo:** con el índice ausente, la interfaz mostraba el
+  aviso y deshabilitaba el botón «Preguntar», pero el campo de
+  texto seguía habilitado: se podía escribir una pregunta (con
+  su contador 12/1000) que no había forma de enviar. El estilo
+  `textarea:disabled` ya existía desde la creación de la
+  interfaz; faltaba aplicarlo.
+- **Cambio:** `templates/index.html` (+6/−0): en la rama
+  «sin índice» de la lectura de `/api/health`, `campo.disabled
+  = true`. Solo esa rama cambia; con índice el campo sigue
+  habilitado como siempre.
+- **Verificaciones:**
+  1. Navegador real con la app levantada sin `index.faiss`
+     (escritorio 1280×800 y móvil 390×844): estado «Sin índice
+     cargado» con punto rojo, aviso visible con la instrucción
+     de ingesta, campo Y botón deshabilitados, cero errores de
+     JavaScript. La captura muestra el campo visiblemente
+     atenuado con el contador en 0/1000.
+  2. Ruta normal intacta tras el cambio (índice restaurado,
+     MD5 `610d0527…` del Ciclo 13): campo habilitado, botón
+     deshabilitado en vacío, REA → confianza alta, similitud
+     0,526, 4 fuentes, cero errores de JavaScript.
+  3. Suite de regresión: **56/56 comprobaciones superadas, 0
+     falladas**, `data/` con los MD5 del Ciclo 13 intactos.
+- **Lista para publicar:** `templates/index.html` e
+  `improvement-log.md`.

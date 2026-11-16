@@ -5,8 +5,12 @@ Convierte en comprobaciones programáticas la batería manual de las
 rondas 2-3 de la operación de mejora (2026-11-09): fases sin índice y
 con índice, errores en JSON, techo de cuerpo de 32 KB, valores
 patológicos de `k` (incluido Infinity) y la puerta de honestidad por
-umbral. Si alguna respuesta se desvía del contrato medido, la suite
-falla en voz alta con la respuesta real: no maquilla.
+umbral. Desde el 2026-11-16 cubre además la interfaz web de `GET /`
+(bateria_interfaz, en ambos modos): la página responde 200 en HTML,
+trae el formulario, no tiene recursos externos (cero URLs absolutas)
+y habla con la API solo por rutas relativas. Si alguna respuesta se
+desvía del contrato medido, la suite falla en voz alta con la
+respuesta real: no maquilla.
 
 Uso (con el entorno del proyecto; en el workspace del autor la semilla
 vive en ~/workspace/rag-demo y su .venv es el entorno de referencia):
@@ -19,8 +23,9 @@ Modos:
     sin   Mueve data/index.faiss a un respaldo temporal, levanta la app
           y comprueba el estado honesto sin índice (health 0/0 y
           «sin_indice», /preguntar 503). Restaura el índice al terminar.
-    con   Levanta la app con el índice presente (27 documentos /
-          527 fragmentos) y comprueba la ruta feliz y los errores.
+    con   Levanta la app con el índice presente (28 documentos /
+          568 fragmentos desde el Ciclo 13) y comprueba la ruta
+          feliz y los errores.
     ambos (por defecto) Ejecuta «sin» y después «con».
 
 La suite levanta la app en un puerto libre con RAG_DEMO_PORT, la
@@ -56,10 +61,19 @@ PYTHON_POR_DEFECTO = os.environ.get(
 )
 
 PREGUNTA_VALIDA = "¿Qué es blockchain y la web3?"
-# Medida repetida en las rondas 2-3 y en la verificación de la semilla:
-# confianza alta, similitud máxima 0,799 y 4 fuentes de blockchain-web3.md.
+# Medida repetida en las rondas 2-3, en la verificación de la semilla
+# y en el Ciclo 13: confianza alta, similitud máxima 0,799 y 4 fuentes
+# de blockchain-web3.md.
 SIMILITUD_VALIDA_ESPERADA = 0.799
-PREGUNTA_BAJO_UMBRAL = "¿Qué es el segundo yo 24/7 de CenteIA?"
+# Desde el Ciclo 13 la pregunta bajo umbral es el clima: la anterior
+# («¿Qué es el segundo yo 24/7 de CenteIA?») dejó de serlo al ingerir
+# la síntesis de CenteIA, que la responde con confianza alta (ver
+# PREGUNTA_SEGUNDO_YO). El clima mide 0,320 estable desde el Ciclo 5.
+PREGUNTA_BAJO_UMBRAL = "¿Qué tiempo hará mañana?"
+SIMILITUD_BAJO_UMBRAL_ESPERADA = 0.320
+# Ciclo 13: la síntesis de CenteIA responde por fin el segundo yo.
+PREGUNTA_SEGUNDO_YO = "¿Qué es el segundo yo 24/7 de CenteIA?"
+SIMILITUD_SEGUNDO_YO_ESPERADA = 0.545
 UMBRAL_CLARO = 0.50  # rag_core.UMBRAL_CLARO
 
 resultados = []  # (modo, nombre, ok, detalle)
@@ -112,6 +126,19 @@ def post_json(base, obj):
 
 def post_crudo(base, texto, content_type="application/json"):
     return peticion(base, "POST", "/preguntar", texto, content_type)
+
+
+def get_html(base, ruta):
+    """GET sin parseo JSON: devuelve (estado, content-type, texto)."""
+    req = urllib.request.Request(base + ruta, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            texto = resp.read().decode("utf-8", errors="replace")
+            return resp.status, resp.headers.get("Content-Type", ""), texto
+    except urllib.error.HTTPError as e:
+        texto = e.read().decode("utf-8", errors="replace")
+        ctype = e.headers.get("Content-Type", "") if e.headers else ""
+        return e.code, ctype, texto
 
 
 # ---------------------------------------------------------------- servidor
@@ -251,8 +278,8 @@ def bateria_con_indice(base):
         h = {}
     comprobar(modo, "health estado «ok» con índice",
               h.get("estado") == "ok", f"estado={h.get('estado')!r}")
-    comprobar(modo, "health 27 documentos / 527 fragmentos",
-              h.get("documentos") == 27 and h.get("fragmentos") == 527,
+    comprobar(modo, "health 28 documentos / 568 fragmentos (Ciclo 13)",
+              h.get("documentos") == 28 and h.get("fragmentos") == 568,
               f"documentos={h.get('documentos')!r}, "
               f"fragmentos={h.get('fragmentos')!r}")
     comprobar(modo, "health modelo_cargado true con índice",
@@ -293,10 +320,29 @@ def bateria_con_indice(base):
               estado == 200 and r2.get("confianza") == "baja",
               f"HTTP {estado}, confianza={r2.get('confianza')!r}, "
               f"cuerpo: {crudo[:160]}")
-    comprobar(modo, "bajo umbral → 0 fuentes y similitud < 0,50",
+    comprobar(modo, "bajo umbral → 0 fuentes y similitud 0,320 (< 0,50)",
               r2.get("fuentes") == [] and isinstance(sim2, (int, float))
+              and sim2 == SIMILITUD_BAJO_UMBRAL_ESPERADA
               and sim2 < UMBRAL_CLARO,
               f"fuentes={r2.get('fuentes')!r}, similitud_maxima={sim2!r}")
+
+    # --- Ciclo 13: la síntesis de CenteIA responde el segundo yo
+    estado, _j, r_sy, crudo = post_json(
+        base, {"pregunta": PREGUNTA_SEGUNDO_YO})
+    if not isinstance(r_sy, dict):
+        r_sy = {}
+    fuentes_sy = r_sy.get("fuentes") or []
+    top_sy = fuentes_sy[0].get("archivo", "") if fuentes_sy else ""
+    comprobar(modo, "segundo yo (Ciclo 13) → 200 con confianza alta",
+              estado == 200 and r_sy.get("confianza") == "alta",
+              f"HTTP {estado}, confianza={r_sy.get('confianza')!r}, "
+              f"cuerpo: {crudo[:160]}")
+    comprobar(modo, "segundo yo (Ciclo 13) → similitud 0,545 y top la síntesis",
+              r_sy.get("similitud_maxima")
+              == SIMILITUD_SEGUNDO_YO_ESPERADA
+              and top_sy.endswith("sintesis-videos-2026-11-04.md"),
+              f"similitud_maxima={r_sy.get('similitud_maxima')!r}, "
+              f"top={top_sy!r}")
 
     # --- 400: validación de «pregunta»
     casos_400 = [
@@ -336,12 +382,13 @@ def bateria_con_indice(base):
               f"HTTP {estado}, cuerpo: {crudo[:160]}")
 
     # --- 404 / 405 / 413 en JSON
-    for ruta in ("/no-existe", "/"):
-        estado, es_json, cuerpo, crudo = peticion(base, "GET", ruta)
-        comprobar(modo, f"404 en JSON (GET {ruta})",
-                  estado == 404 and es_json and isinstance(cuerpo, dict)
-                  and "error" in cuerpo,
-                  f"HTTP {estado}, cuerpo: {crudo[:160]}")
+    # GET / ya no es 404: desde el 2026-11-16 sirve la interfaz web
+    # (la cubre bateria_interfaz); la ruta desconocida sigue en 404.
+    estado, es_json, cuerpo, crudo = peticion(base, "GET", "/no-existe")
+    comprobar(modo, "404 en JSON (GET /no-existe)",
+              estado == 404 and es_json and isinstance(cuerpo, dict)
+              and "error" in cuerpo,
+              f"HTTP {estado}, cuerpo: {crudo[:160]}")
     estado, es_json, cuerpo, crudo = peticion(base, "GET", "/preguntar")
     comprobar(modo, "405 en JSON (GET /preguntar)",
               estado == 405 and es_json and isinstance(cuerpo, dict)
@@ -391,6 +438,42 @@ def bateria_con_indice(base):
     caso_k("k=-Infinity → 200 sin 500", "-Infinity", 4)
 
 
+# ---------------------------------------------------------------- interfaz web
+def bateria_interfaz(base, modo):
+    """GET / sirve la interfaz web en ambos modos (con y sin índice).
+
+    La página debe cargar aunque no haya índice: el aviso de «sin
+    índice» lo muestra el JavaScript al leer /api/health, no el
+    servidor. Las comprobaciones son de contrato de la página, no de
+    interacción (eso se verifica con el navegador, fuera de la suite).
+    """
+    estado, ctype, html = get_html(base, "/")
+    comprobar(modo, "interfaz GET / → 200 en HTML",
+              estado == 200 and "text/html" in (ctype or ""),
+              f"HTTP {estado}, Content-Type: {ctype!r}")
+    comprobar(modo, "interfaz trae el formulario de pregunta",
+              '<form id="form-pregunta"' in html
+              and '<textarea id="pregunta"' in html
+              and 'id="boton-preguntar"' in html,
+              "faltan el formulario, el campo o el botón")
+    comprobar(modo, "interfaz sin recursos externos (cero URLs absolutas)",
+              "http://" not in html and "https://" not in html,
+              "la página contiene una URL absoluta")
+    comprobar(modo, "interfaz habla con la API por rutas relativas",
+              'fetch("/preguntar"' in html
+              and 'fetch("/api/health"' in html,
+              "faltan las llamadas relativas a /preguntar o /api/health")
+    comprobar(modo, "interfaz muestra las fuentes citadas",
+              'id="fuentes"' in html and "Fuentes" in html,
+              "falta la sección de fuentes")
+    estado, es_json, cuerpo, crudo = peticion(
+        base, "POST", "/", "{}", "application/json")
+    comprobar(modo, "405 en JSON (POST /)",
+              estado == 405 and es_json and isinstance(cuerpo, dict)
+              and "error" in cuerpo,
+              f"HTTP {estado}, cuerpo: {crudo[:160]}")
+
+
 # ---------------------------------------------------------------- main
 def ejecutar_modo(python, modo):
     respaldo = None
@@ -418,6 +501,7 @@ def ejecutar_modo(python, modo):
             bateria_sin_indice(base)
         else:
             bateria_con_indice(base)
+        bateria_interfaz(base, modo)
     except Exception as exc:  # arranque fallido: un fallo, no un cuelgue
         registrar(modo, "arranque de la app", False, repr(exc))
     finally:

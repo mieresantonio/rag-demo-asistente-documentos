@@ -28,6 +28,13 @@ python3 -m venv .venv
 .venv/bin/python app.py        # API en http://127.0.0.1:5057
 ```
 
+Abre **http://127.0.0.1:5057/** en el navegador: la interfaz web mínima
+(una sola página, sin recursos externos) pregunta desde el navegador
+y muestra la respuesta con sus fuentes citadas, la confianza y la
+similitud máxima; si el índice aún no existe, avisa y desactiva el
+formulario hasta que se ejecute la ingesta. La API de abajo sigue
+igual y es lo que usa la página.
+
 El arranque de `app.py` no es instantáneo: antes de aceptar peticiones
 carga el modelo de embeddings en memoria (medido el 2026-11-02:
 ~24 s de carga del modelo, ~25 s en total hasta que la API responde).
@@ -96,15 +103,16 @@ Dos notas de arranque que no se ven en los comandos de arriba:
 ## Corpus
 
 Documentos propios de Antonio, ya existentes en su workspace
-(**27 documentos, 527 fragmentos** en la ingesta del Ciclo 12,
-2026-11-02; el Ciclo 11 dejó 513: el sexto refresco suma los
-fragmentos de la entrada del Ciclo 11 de la barbería
-—verificación cruzada frontend↔backend con
-`scripts/verify-catalog.py`, +14—):
+(**28 documentos, 568 fragmentos** en la ingesta del Ciclo 13,
+2026-11-16; el Ciclo 12 dejó 527: el séptimo refresco suma la
+síntesis de los vídeos de CenteIA (documento nuevo, +29
+fragmentos) y actualiza 8 registros de `corpus-extra`, con +12
+fragmentos netos en 5 de ellos):
 
 - `centeia-materiales/` — análisis y evaluaciones de los materiales del
-  curso «Tu segundo yo 24/7» (CenteIA). *(12 documentos entre esta
-  carpeta y la siguiente: el corpus inicial.)*
+  curso «Tu segundo yo 24/7» (CenteIA), incluida la síntesis de los
+  vídeos (2026-11-04, 29 fragmentos, desde el Ciclo 13). *(12
+  documentos entre esta carpeta y la siguiente: el corpus inicial.)*
 - `mundo-dirsi/aprendido/` — notas de aprendizaje (agentes e IA, blockchain,
   despliegue, ingeniería inversa, portafolio y empleo…).
 - `corpus-extra/` — **desde el Ciclo 5**: los registros de mejora
@@ -184,7 +192,8 @@ Piezas:
 |---|---|
 | `rag_core.py` | Troceado, embeddings, construcción y carga del índice, búsqueda y composición de la respuesta |
 | `ingest.py` | Script de ingesta reproducible (CLI) |
-| `app.py` | API Flask: `GET /api/health`, `POST /preguntar` |
+| `app.py` | API Flask + interfaz web: `GET /`, `GET /api/health`, `POST /preguntar` |
+| `templates/index.html` | La interfaz web: una sola página autocontenida, sin recursos externos |
 | `data/` | Índice FAISS (generado por la ingesta, no versionado), fragmentos y metadatos |
 
 ## Límites honestos
@@ -193,20 +202,21 @@ Piezas:
   texto redactado. Responde «con las palabras del corpus»: si el corpus no
   lo dice, no lo inventa — pero tampoco parafrasea ni conecta ideas de
   varios documentos.
-- **Calidad ligada al corpus**: con 27 documentos pequeños, una pregunta
+- **Calidad ligada al corpus**: con 28 documentos pequeños, una pregunta
   fuera de tema no debe rellenar la respuesta. La política está calibrada
   con pruebas reales sobre este corpus (2026-11-02, recalculada en el
   Ciclo 2 tras el troceado con títulos y la reordenación híbrida,
   re-verificada en el Ciclo 5 sobre el corpus ampliado, de nuevo en
   el Ciclo 7 tras el segundo refresco, en el Ciclo 9 tras el
   tercero, en el Ciclo 10 tras el cuarto, en el Ciclo 11 tras
-  el quinto y en el Ciclo 12 tras el sexto):
+  el quinto, en el Ciclo 12 tras el sexto y en el Ciclo 13 tras
+  el séptimo, 2026-11-16):
   ningún fragmento por debajo de 0,30 entra nunca, y si la mejor
   similitud semántica de la consulta queda por debajo de 0,50 la API
   responde «sin resultados claros en tus documentos», con
   `confianza: "baja"` y `fuentes` vacía. Similitudes semánticas máximas
   medidas en el Ciclo 5 y reproducidas idénticas en los Ciclos 7, 9,
-  10, 11 y 12:
+  10, 11, 12 y 13:
   dentro de tema, REA 0,526 · automatizaciones
   0,699 · 45 frente a 90 prompts 0,669 · barbería (Ciclo 1) 0,557 ·
   direcciones de tx-builder 0,522 · despliegue 0,502 (ver el caso
@@ -221,9 +231,15 @@ Piezas:
   la barbería (Ciclo 10, también nueva del Ciclo 11) 0,530 ·
   verificación cruzada de la barbería (Ciclo 11, pregunta nueva
   del Ciclo 12, «¿Qué verifica el script verify-catalog de la
-  barbería?») 0,581; fuera
+  barbería?») 0,581 · segundo yo 24/7 (pregunta nueva del
+  Ciclo 13, «¿Qué es el segundo yo 24/7 de CenteIA?») 0,545 ·
+  toReversed en block-explorer (pregunta nueva del Ciclo 13,
+  «¿Qué cambió toReversed en block-explorer?») 0,538; fuera
   de tema, la capital de Francia no devuelve
-  ningún fragmento ≥ 0,30 y el clima 0,320. El margen sigue siendo
+  ningún fragmento ≥ 0,30 y el clima 0,320. La pregunta del
+  segundo yo fue el ejemplo bajo umbral de la suite hasta el
+  Ciclo 12; desde el Ciclo 13 la síntesis la responde (0,545) y
+  el ejemplo bajo umbral pasó a ser el clima (0,320). El margen sigue siendo
   estrecho (en el Ciclo 1, con otro corpus, un lorem ipsum llegó a
   0,52 y se colaba como «claro») y ningún umbral único separa
   limpiamente con este modelo pequeño.
@@ -267,7 +283,9 @@ Piezas:
    examina todos los fragmentos, viable a esta escala de demo).
 3. Re-troceado adaptativo y metadatos por página en PDF.
 4. Evaluación con un set fijo de preguntas/respuestas esperadas.
-5. Despliegue (p. ej. PythonAnywhere) y una interfaz web mínima de chat.
+5. Despliegue (p. ej. PythonAnywhere). La interfaz web mínima ya existe
+   desde el 2026-11-16 (`GET /`, una sola página autocontenida que
+   pregunta y muestra respuesta + fuentes); queda el despliegue.
 
 ## Stack
 

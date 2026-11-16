@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asistente de documentos — RAG demo</title>
+<style>
+  :root {
+    --fondo: #fafaf7;
+    --superficie: #ffffff;
+    --elevado: #f3f3ee;
+    --texto: #1c1c1a;
+    --atenuado: #6f6f68;
+    --borde: #e3e3db;
+    --acento: #0f766e;
+    --acento-suave: #e6f5f3;
+    --aviso: #92400e;
+    --aviso-suave: #fef3c7;
+    --error: #b91c1c;
+    --error-suave: #fee2e2;
+    --radio-s: 4px;
+    --radio-m: 8px;
+    --radio-l: 12px;
+    --radio-xl: 16px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 48px;
+  }
+  .kicker {
+    margin: 0 0 8px;
+    color: var(--acento);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 0 0 12px;
+    font-size: clamp(28px, 5vw, 36px);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  .intro {
+    margin: 0 0 24px;
+    color: var(--atenuado);
+    font-size: 17px;
+  }
+  .tarjeta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-xl);
+    box-shadow: 0 1px 2px rgb(28 28 26 / 0.04);
+    padding: 20px;
+  }
+  .tarjeta + .tarjeta { margin-top: 16px; }
+  .estado {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 14px;
+    color: var(--atenuado);
+  }
+  .punto {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--atenuado);
+    flex: none;
+    transform: translateY(1px);
+  }
+  #estado-texto {
+    /* Sin esto, el texto largo (nombre del modelo) empujaba al punto
+       a su propia línea en pantallas estrechas: el span debe ocupar
+       el ancho restante y partirse, no saltar de línea entero. */
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .punto.ok { background: var(--acento); }
+  .punto.aviso { background: var(--aviso); }
+  .punto.error { background: var(--error); }
+  .aviso-indice {
+    margin: 12px 0 0;
+    padding: 12px 16px;
+    background: var(--aviso-suave);
+    border-radius: var(--radio-m);
+    color: var(--aviso);
+    font-size: 14px;
+  }
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  textarea {
+    width: 100%;
+    min-height: 88px;
+    padding: 12px 14px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-l);
+    background: var(--superficie);
+    color: var(--texto);
+    font: inherit;
+    resize: vertical;
+  }
+  textarea:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 1px;
+  }
+  textarea:disabled { background: var(--elevado); color: var(--atenuado); }
+  .fila-form {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 12px;
+  }
+  .contador {
+    color: var(--atenuado);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  button {
+    min-height: 44px;
+    padding: 10px 24px;
+    border: 0;
+    border-radius: var(--radio-l);
+    background: var(--acento);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 150ms ease, opacity 150ms ease;
+  }
+  button:hover:not(:disabled) { background: #0d5f59; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
+  .cargando {
+    margin: 16px 0 0;
+    color: var(--atenuado);
+    font-size: 14px;
+  }
+  .cargando .puntos::after {
+    content: "…";
+    animation: latido 1.2s ease-in-out infinite;
+  }
+  @keyframes latido {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cargando .puntos::after { animation: none; }
+    button { transition: none; }
+  }
+  .respuesta-texto {
+    margin: 0;
+    white-space: pre-wrap;
+  }
+  .meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    font-size: 13px;
+  }
+  .etiqueta {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .etiqueta.alta { background: var(--acento-suave); color: var(--acento); }
+  .etiqueta.baja { background: var(--aviso-suave); color: var(--aviso); }
+  .similitud {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--elevado);
+    color: var(--atenuado);
+    font-variant-numeric: tabular-nums;
+  }
+  h2 {
+    margin: 24px 0 12px;
+    font-size: 19px;
+    line-height: 1.3;
+  }
+  .fuente {
+    padding: 12px 0;
+    border-top: 1px solid var(--borde);
+  }
+  .fuente:first-of-type { border-top: 0; padding-top: 4px; }
+  .fuente-cabecera {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: baseline;
+    font-size: 14px;
+  }
+  .fuente-num {
+    font-weight: 700;
+    color: var(--acento);
+  }
+  .fuente-archivo { font-weight: 600; }
+  .fuente-seccion { color: var(--atenuado); }
+  .fuente-sim {
+    margin-left: auto;
+    color: var(--atenuado);
+    font-variant-numeric: tabular-nums;
+  }
+  .fuente-texto {
+    margin: 8px 0 0;
+    color: var(--atenuado);
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+  .error-caja {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: var(--error-suave);
+    border-radius: var(--radio-m);
+    color: var(--error);
+    font-size: 14px;
+  }
+  footer {
+    margin-top: 32px;
+    color: var(--atenuado);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <p class="kicker">RAG demo · Flask + FAISS</p>
+  <h1>Asistente de documentos</h1>
+  <p class="intro">Pregunta sobre los documentos de Antonio y el asistente
+  responde solo con lo que dicen, citando la fuente exacta de cada
+  fragmento. Sin LLM: la respuesta es extractiva y todo se puede
+  verificar contra la fuente citada.</p>
+
+  <section class="tarjeta" aria-label="Estado del índice">
+    <p class="estado" id="estado">
+      <span class="punto" id="estado-punto"></span>
+      <span id="estado-texto">Comprobando el estado del índice…</span>
+    </p>
+    <p class="aviso-indice" id="aviso-indice" hidden></p>
+  </section>
+
+  <section class="tarjeta" aria-label="Pregunta">
+    <form id="form-pregunta">
+      <label for="pregunta">Tu pregunta</label>
+      <textarea id="pregunta" name="pregunta" rows="3" maxlength="1000"
+        placeholder="¿Qué es REA y para qué sirve?"
+        autocomplete="off"></textarea>
+      <div class="fila-form">
+        <span class="contador" id="contador">0 / 1000</span>
+        <button type="submit" id="boton-preguntar" disabled>Preguntar</button>
+      </div>
+    </form>
+    <p class="cargando" id="cargando" hidden>
+      Buscando en los documentos<span class="puntos"></span>
+    </p>
+  </section>
+
+  <section class="tarjeta" id="resultado" aria-live="polite" hidden>
+    <p class="respuesta-texto" id="respuesta-texto"></p>
+    <div class="meta">
+      <span class="etiqueta" id="etiqueta-confianza"></span>
+      <span class="similitud" id="similitud"></span>
+    </div>
+    <div id="fuentes"></div>
+  </section>
+
+  <p class="error-caja" id="error-caja" role="alert" hidden></p>
+
+  <footer>
+    Respuestas extractivas: compuestas desde los fragmentos recuperados;
+    ningún modelo de lenguaje las redactó. Si la mejor similitud queda
+    por debajo de 0,50, el asistente dice que no encontró resultados
+    claros en vez de inventar. La API sigue disponible en
+    <code>/api/health</code> y <code>POST /preguntar</code>.
+  </footer>
+</main>
+<script>
+(function () {
+  "use strict";
+  var estadoPunto = document.getElementById("estado-punto");
+  var estadoTexto = document.getElementById("estado-texto");
+  var avisoIndice = document.getElementById("aviso-indice");
+  var form = document.getElementById("form-pregunta");
+  var campo = document.getElementById("pregunta");
+  var contador = document.getElementById("contador");
+  var boton = document.getElementById("boton-preguntar");
+  var cargando = document.getElementById("cargando");
+  var resultado = document.getElementById("resultado");
+  var respuestaTexto = document.getElementById("respuesta-texto");
+  var etiquetaConfianza = document.getElementById("etiqueta-confianza");
+  var similitud = document.getElementById("similitud");
+  var fuentesDiv = document.getElementById("fuentes");
+  var errorCaja = document.getElementById("error-caja");
+  var indiceListo = false;
+
+  function escapar(texto) {
+    return String(texto)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function nombreModeloCorto(nombre) {
+    return String(nombre || "").replace("sentence-transformers/", "");
+  }
+
+  function actualizarBoton() {
+    var texto = campo.value.trim();
+    boton.disabled = !indiceListo || texto.length === 0;
+    contador.textContent = campo.value.length + " / 1000";
+  }
+
+  function mostrarError(mensaje) {
+    errorCaja.textContent = mensaje;
+    errorCaja.hidden = false;
+  }
+
+  function ocultarError() {
+    errorCaja.hidden = true;
+    errorCaja.textContent = "";
+  }
+
+  fetch("/api/health")
+    .then(function (resp) { return resp.json(); })
+    .then(function (h) {
+      if (h.estado === "ok") {
+        indiceListo = true;
+        estadoPunto.classList.add("ok");
+        estadoTexto.textContent =
+          h.documentos + " documentos · " + h.fragmentos +
+          " fragmentos · " + nombreModeloCorto(h.modelo_embeddings);
+      } else if (h.estado === "calentando") {
+        estadoPunto.classList.add("aviso");
+        estadoTexto.textContent =
+          "El modelo de embeddings aún se está cargando; " +
+          "la primera pregunta tardará unos segundos.";
+        indiceListo = true;
+      } else {
+        estadoPunto.classList.add("error");
+        estadoTexto.textContent = "Sin índice cargado.";
+        avisoIndice.textContent =
+          "Todavía no se ha ejecutado la ingesta: ejecuta " +
+          "«python ingest.py» y recarga la página para poder preguntar.";
+        avisoIndice.hidden = false;
+        // Sin índice el formulario está muerto: deshabilitar también
+        // el campo, no solo el botón, para no invitar a escribir una
+        // pregunta que no se puede enviar (el estilo :disabled ya
+        // existía; faltaba aplicarlo).
+        campo.disabled = true;
+      }
+      actualizarBoton();
+    })
+    .catch(function () {
+      estadoPunto.classList.add("error");
+      estadoTexto.textContent = "No se pudo contactar con la API.";
+    });
+
+  campo.addEventListener("input", actualizarBoton);
+
+  form.addEventListener("submit", function (evento) {
+    evento.preventDefault();
+    var pregunta = campo.value.trim();
+    if (!pregunta) return;
+    ocultarError();
+    resultado.hidden = true;
+    boton.disabled = true;
+    boton.textContent = "Buscando…";
+    cargando.hidden = false;
+    fetch("/preguntar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pregunta: pregunta })
+    })
+      .then(function (resp) {
+        return resp.json().then(function (cuerpo) {
+          return { estado: resp.status, cuerpo: cuerpo };
+        });
+      })
+      .then(function (res) {
+        if (res.estado !== 200) {
+          mostrarError(res.cuerpo.error ||
+            "La petición falló (HTTP " + res.estado + ").");
+          return;
+        }
+        respuestaTexto.textContent = res.cuerpo.respuesta || "";
+        var confianza = res.cuerpo.confianza || "baja";
+        etiquetaConfianza.textContent =
+          confianza === "alta" ? "Confianza alta" : "Confianza baja";
+        etiquetaConfianza.className =
+          "etiqueta " + (confianza === "alta" ? "alta" : "baja");
+        var sim = res.cuerpo.similitud_maxima;
+        similitud.textContent = (typeof sim === "number")
+          ? "Similitud máxima " + sim.toFixed(3)
+          : "Sin similitud registrada";
+        var fuentes = res.cuerpo.fuentes || [];
+        var html = "";
+        if (fuentes.length > 0) {
+          html += "<h2>Fuentes</h2>";
+          fuentes.forEach(function (f) {
+            html += '<div class="fuente">' +
+              '<div class="fuente-cabecera">' +
+              '<span class="fuente-num">[' + escapar(f.n) + "]</span>" +
+              '<span class="fuente-archivo">' + escapar(f.archivo) + "</span>" +
+              '<span class="fuente-seccion">' + escapar(f.seccion) + "</span>" +
+              '<span class="fuente-sim">sim. ' +
+              (typeof f.similitud === "number"
+                ? f.similitud.toFixed(3) : "—") + "</span>" +
+              "</div>" +
+              '<p class="fuente-texto">' + escapar(f.fragmento) + "</p>" +
+              "</div>";
+          });
+        }
+        fuentesDiv.innerHTML = html;
+        resultado.hidden = false;
+      })
+      .catch(function () {
+        mostrarError("No se pudo contactar con la API. " +
+          "Comprueba que la app sigue corriendo y reintenta.");
+      })
+      .finally(function () {
+        cargando.hidden = true;
+        boton.textContent = "Preguntar";
+        actualizarBoton();
+      });
+  });
+
+  actualizarBoton();
+})();
+</script>
+</body>
+</html>
