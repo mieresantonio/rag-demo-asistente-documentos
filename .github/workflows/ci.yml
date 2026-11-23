@@ -1,0 +1,86 @@
+# CI del RAG demo: suite de regresión + evaluación canario en cada push y PR.
+#
+# Por qué este orden:
+#   1. El índice FAISS no está versionado (.gitignore), pero sus entradas
+#      sí (data/chunks.json + data/meta.json). rebuild_index.py lo
+#      reconstruye desde ellas: la CI prueba el corpus COMPLETO (28
+#      documentos / 572 fragmentos), no solo corpus-extra, aunque las
+#      otras dos carpetas del corpus vivan fuera del repo.
+#   2. La suite (tests_regresion_api.py) levanta la app ella misma en
+#      ambos modos (sin índice y con índice) y comprueba el contrato
+#      de la API. Su intérprete por defecto es el .venv del workspace
+#      del autor, que no existe aquí: por eso se pasa --python.
+#   3. El canario (evaluacion_canario.py) pregunta las 15 preguntas
+#      fijas de canario.json y detecta regresiones en la honestidad
+#      medida (que siga diciendo «no lo sé» cuando no sabe y citando
+#      bien cuando sabe).
+#
+# Resultados esperados (con los Ciclos 15 y 16 aplicados): suite
+# 76/76, canario 87/87. Sin el Ciclo 16 de enlace profundo la suite
+# es 66/66; sin el Ciclo 15, 56/56; el workflow no fija ningún
+# número, cada script informa de su propio resultado.
+#
+# Coste: la primera corrida descarga torch solo-CPU + el modelo de
+# embeddings (~1,8 GB entre entorno y pesos); las siguientes usan la
+# caché de pip y de Hugging Face. Duración medida de la primera
+# corrida: @@pendiente de medir en la primera ejecución@@.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Una corrida nueva en la misma rama cancela la anterior: en esta demo
+# solo importa el estado del último commit, no el historial de corridas.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Clonar el repo
+        uses: actions/checkout@v4
+
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Caché de pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Caché del modelo de embeddings
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-minilm-l12-v2-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            hf-${{ runner.os }}-minilm-l12-v2-
+
+      - name: Instalar dependencias (torch solo-CPU primero)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Reconstruir el índice desde chunks.json versionado
+        run: python rebuild_index.py
+
+      - name: Suite de regresión de la API
+        run: python tests_regresion_api.py --python "$(which python)"
+
+      - name: Evaluación canario
+        run: python evaluacion_canario.py --python "$(which python)"
