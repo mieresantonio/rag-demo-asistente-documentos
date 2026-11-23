@@ -8,7 +8,16 @@ patológicos de `k` (incluido Infinity) y la puerta de honestidad por
 umbral. Desde el 2026-11-16 cubre además la interfaz web de `GET /`
 (bateria_interfaz, en ambos modos): la página responde 200 en HTML,
 trae el formulario, no tiene recursos externos (cero URLs absolutas)
-y habla con la API solo por rutas relativas. Si alguna respuesta se
+y habla con la API solo por rutas relativas. Desde el Ciclo 15
+(2026-11-23) cubre además las preguntas de ejemplo clicables, el
+historial de la sesión (con su botón de limpiar y la reutilización
+de preguntas al pulsarlas) y el selector de fuentes `k`, que la
+página envía a /preguntar. Desde el Ciclo 16
+(2026-11-23) cubre además el enlace profundo `?q=` (la página lee
+la pregunta de la URL y la ejecuta), la URL compartible con su
+botón de copiar, el mapa de cobertura con los 28 documentos y sus
+preguntas medidas, la explicación «por qué esta fuente» y la
+sincronización del mapa con los conteos vivos de /api/health. Si alguna respuesta se
 desvía del contrato medido, la suite falla en voz alta con la
 respuesta real: no maquilla.
 
@@ -483,6 +492,53 @@ def bateria_interfaz(base, modo):
     comprobar(modo, "interfaz muestra las fuentes citadas",
               'id="fuentes"' in html and "Fuentes" in html,
               "falta la sección de fuentes")
+    comprobar(modo, "interfaz trae preguntas de ejemplo clicables",
+              html.count('class="ejemplo"') == 3
+              and 'data-pregunta="¿Qué es REA?"' in html
+              and 'data-pregunta="¿Qué es blockchain y la web3?"' in html
+              and 'data-pregunta="¿Qué es el segundo yo 24/7 de CenteIA?"'
+              in html,
+              "faltan los tres botones de ejemplo o sus preguntas")
+    comprobar(modo, "interfaz trae el historial de la sesión",
+              'id="historial"' in html
+              and 'id="historial-lista"' in html
+              and 'id="limpiar-historial"' in html,
+              "falta la sección de historial o el botón de limpiarlo")
+    comprobar(modo, "interfaz trae el selector de fuentes (k)",
+              'id="k-fuentes"' in html
+              and '<option value="8">8</option>' in html,
+              "falta el selector de k o su rango 1–8")
+    comprobar(modo, "interfaz envía k a /preguntar",
+              '"k"' in html,
+              "la petición de la página no incluye el campo k")
+    comprobar(modo, "historial: pulsar una pregunta la reutiliza",
+              "historial-boton" in html,
+              "falta el botón de pregunta del historial")
+    comprobar(modo, "interfaz lee el enlace profundo ?q=",
+              'URLSearchParams' in html
+              and 'get("q")' in html
+              and 'preguntaPendiente' in html,
+              "la página no lee ?q= de la URL")
+    comprobar(modo, "interfaz actualiza la URL con la pregunta",
+              'history.replaceState' in html
+              and '"?q="' in html
+              and 'id="copiar-enlace"' in html,
+              "falta el enlace compartible o el botón de copiarlo")
+    comprobar(modo, "interfaz trae el mapa de cobertura (28 documentos)",
+              'id="cobertura"' in html
+              and html.count('class="canario"') == 28
+              and html.count('class="cobertura-doc"') == 28
+              and "28 documentos · 572 fragmentos · 246 secciones" in html,
+              "falta el mapa de cobertura o no trae los 28 documentos")
+    comprobar(modo, "interfaz explica por qué cada fuente",
+              'porQueFuente' in html
+              and 'fuente-porque' in html
+              and 'Por qué esta fuente' in html,
+              "falta la explicación «por qué esta fuente»")
+    comprobar(modo, "interfaz sincroniza el mapa con /api/health",
+              'sincronizarCobertura' in html
+              and 'id="cobertura-aviso"' in html,
+              "falta la sincronización del mapa con los conteos vivos")
     estado, es_json, cuerpo, crudo = peticion(
         base, "POST", "/", "{}", "application/json")
     comprobar(modo, "405 en JSON (POST /)",

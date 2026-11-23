@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Refresca `corpus-extra/` con los improvement-log de las apps.
 
-El corpus inicial del RAG demo son las carpetas por defecto de
-`rag_core.DEFAULT_CORPUS_DIRS` (materiales CenteIA + aprendido de
-mundo-dirsi). Desde el Ciclo 5 (2026-11-02) se suma una tercera
-carpeta, `corpus-extra/` DENTRO de este proyecto, con una copia de
+El corpus del RAG demo son las tres carpetas por defecto de
+`rag_core.DEFAULT_CORPUS_DIRS`: materiales CenteIA, aprendido de
+mundo-dirsi y `corpus-extra/` DENTRO de este proyecto. Esta tercera
+carpeta existe desde el Ciclo 5 (2026-11-02) y guarda una copia de
 los `improvement-log.md` de las apps mejoradas en la Fase 2, para que
-la demo también responda sobre ese trabajo de mejora.
+la demo también responda sobre ese trabajo de mejora; desde el
+Ciclo 15 forma parte de las carpetas por defecto, así que un
+`python ingest.py` sin argumentos ya la incluye.
 
 Por qué copias y no las carpetas originales: la ingesta
 (`rag_core.collect_chunks`) solo lee los archivos de primer nivel de
@@ -22,8 +24,7 @@ ejecutar el script (verificable por MD5): si un registro cambia en su
 app, hay que volver a ejecutar este script y después la ingesta:
 
     .venv/bin/python refresh_corpus_extra.py
-    .venv/bin/python ingest.py ~/workspace/centeia-materiales \
-        ~/workspace/mundo-dirsi/aprendido ~/workspace/rag-demo/corpus-extra
+    .venv/bin/python ingest.py   # las 3 carpetas por defecto, corpus-extra incluida
 
 El script es idempotente: borra de `corpus-extra/` cualquier `.md`
 que ya no esté en la lista, para que la carpeta sea siempre el

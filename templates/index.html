@@ -154,6 +154,44 @@
     background: var(--acento-suave);
     color: var(--acento);
   }
+  .fila-opciones {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 12px;
+  }
+  .fila-opciones label {
+    margin-bottom: 0;
+    font-size: 14px;
+  }
+  select {
+    padding: 8px 10px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-m);
+    background: var(--superficie);
+    color: var(--texto);
+    font: inherit;
+    font-size: 14px;
+  }
+  select:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 1px;
+  }
+  select:disabled { background: var(--elevado); color: var(--atenuado); }
+  .atajo {
+    margin: 12px 0 0;
+    color: var(--atenuado);
+    font-size: 13px;
+  }
+  .historial-cabecera {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .historial-cabecera h2 { margin: 0 0 12px; }
   .historial-lista {
     margin: 0;
     padding: 0;
@@ -170,7 +208,24 @@
     font-size: 14px;
   }
   .historial-entrada:first-child { border-top: 0; padding-top: 4px; }
-  .historial-pregunta { font-weight: 600; }
+  button.historial-boton {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--texto);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+  button.historial-boton:hover:not(:disabled) {
+    background: none;
+    color: var(--acento);
+    text-decoration: underline;
+  }
   .historial-meta {
     color: var(--atenuado);
     font-variant-numeric: tabular-nums;
@@ -294,6 +349,118 @@
     font-size: 13px;
     line-height: 1.5;
   }
+  /* Enlace profundo + mapa de cobertura + «por qué esta fuente» (Ciclo 16) */
+  button.secundario {
+    min-height: 36px;
+    padding: 6px 14px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-m);
+    background: var(--elevado);
+    color: var(--texto);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  button.secundario:hover:not(:disabled) {
+    background: var(--acento-suave);
+    color: var(--acento);
+  }
+  .compartir {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 16px;
+  }
+  .compartir-nota {
+    color: var(--atenuado);
+    font-size: 13px;
+  }
+  .fuente-porque {
+    margin: 8px 0 0;
+    color: var(--atenuado);
+    font-size: 13px;
+  }
+  .fuente-porque strong { color: var(--texto); }
+  #cobertura > summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 17px;
+  }
+  #cobertura > summary::marker { color: var(--acento); }
+  .cobertura-intro, .cobertura-nota {
+    color: var(--atenuado);
+    font-size: 14px;
+  }
+  .cobertura-aviso {
+    padding: 12px 16px;
+    background: var(--aviso-suave);
+    border-radius: var(--radio-m);
+    color: var(--aviso);
+    font-size: 14px;
+  }
+  #cobertura h3 {
+    margin: 24px 0 12px;
+    font-size: 16px;
+  }
+  .cobertura-tabla {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .cobertura-tabla th, .cobertura-tabla td {
+    padding: 10px 8px;
+    border-top: 1px solid var(--borde);
+    vertical-align: top;
+    text-align: left;
+  }
+  .cobertura-tabla thead th {
+    border-top: 0;
+    color: var(--atenuado);
+    font-size: 13px;
+  }
+  .cobertura-tabla td.num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .cobertura-doc { font-weight: 600; }
+  .cobertura-ruta {
+    color: var(--atenuado);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .cobertura-sim {
+    color: var(--atenuado);
+    font-size: 13px;
+  }
+  .cobertura-secciones summary {
+    cursor: pointer;
+    font-weight: 400;
+    font-size: 14px;
+    color: var(--acento);
+  }
+  .cobertura-lista-secciones {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    color: var(--atenuado);
+    font-size: 13px;
+  }
+  button.canario {
+    min-height: 32px;
+    margin-top: 8px;
+    padding: 4px 14px;
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    background: var(--elevado);
+    color: var(--texto);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  button.canario:hover:not(:disabled) {
+    background: var(--acento-suave);
+    color: var(--acento);
+  }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -331,15 +498,222 @@
           data-pregunta="¿Qué es el segundo yo 24/7 de CenteIA?">¿Qué es el
           segundo yo 24/7 de CenteIA?</button>
       </div>
+      <div class="fila-opciones">
+        <label for="k-fuentes">Fuentes por respuesta</label>
+        <select id="k-fuentes" name="k">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+        </select>
+      </div>
       <div class="fila-form">
         <span class="contador" id="contador">0 / 1000</span>
         <button type="submit" id="boton-preguntar" disabled>Preguntar</button>
       </div>
+      <p class="atajo">Atajo: Ctrl+Intro (o Cmd+Intro) envía la pregunta.</p>
     </form>
     <p class="cargando" id="cargando" hidden>
       Buscando en los documentos<span class="puntos"></span>
     </p>
   </section>
+
+<details class="tarjeta" id="cobertura">
+  <summary><span id="cobertura-resumen">Qué puedo responder — mapa de cobertura: 28 documentos · 572 fragmentos · 246 secciones</span></summary>
+  <p class="cobertura-intro">Cada documento tiene una pregunta medida que lo recupera con confianza alta (similitud ≥ 0,50): ningún documento está muerto. Pulsa «Probar» para lanzar la pregunta tal cual se midió. Las similitudes son las medidas en la batería (Ciclos 2–14) y en el mapa de cobertura del 16 nov 2026; los controles re-medidos ese día salieron idénticos.</p>
+  <p class="cobertura-aviso" id="cobertura-aviso" hidden></p>
+  <h3>CenteIA — materiales del curso «Tu segundo yo 24/7» (5 documentos · 64 fragmentos)</h3>
+  <table class="cobertura-tabla">
+    <thead><tr><th>Documento</th><th>Frag.</th><th>Secciones</th><th>Pregunta medida</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="cobertura-doc">analisis</span><br><span class="cobertura-ruta">centeia-materiales/analisis.md</span></td>
+        <td class="num">8</td>
+        <td><details class="cobertura-secciones"><summary>7 secciones</summary><ul class="cobertura-lista-secciones"><li>Análisis — Materiales CenteIA «Tu segundo yo 24/7»</li><li>1. Pre-diseña tu segundo yo (1 ficha)</li><li>2. Todo lo que la IA ya puede hacer por ti (pero lo sigues haciendo tú)</li><li>3. 90 prompts que funcionan (2 bloques de 45)</li><li>4. Glosario IA sin jerga</li><li>Cómo se usan en las 3 apps de portafolio</li><li>Límite de uso (importante)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Cuáles son las 25 tareas que la IA ya puede hacer por ti según los materiales de CenteIA?</span><br><span class="cobertura-sim">sim. 0,694 · 1.ª (3 de 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Cuáles son las 25 tareas que la IA ya puede hacer por ti según los materiales de CenteIA?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">automatizaciones-analisis</span><br><span class="cobertura-ruta">centeia-materiales/automatizaciones-analisis.md</span></td>
+        <td class="num">20</td>
+        <td><details class="cobertura-secciones"><summary>12 secciones</summary><ul class="cobertura-lista-secciones"><li>5 Automatizaciones y Agentes de IA (CenteIA) — análisis</li><li>Idea central</li><li>Antes de empezar: Make.com y n8n</li><li>01 — Analista de CV con IA para RRHH (800–1500 €)</li><li>02 — Procesador automático de facturas con GPT Vision (1000–2000 €)</li><li>03 — Captación de leads con Google Maps + IA (500–1500 €)</li><li>04 — Generador de contenido multicanal con IA (1500–3000 €)</li><li>05 — Creación de avatares con IA vía Telegram (2000–4000 €)</li><li>Cómo importar los blueprints en Make.com</li><li>Errores de edición detectados en la guía (leídos, no corregidos)</li><li>Notas honestas de Dirsi (no están en la guía)</li><li>Utilidad para Antonio (clasificación)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué automatizaciones presenta la guía de CenteIA y cómo se venden?</span><br><span class="cobertura-sim">sim. 0,699 · las 4 fuentes · batería, Ciclo 5</span><br><button type="button" class="canario" data-pregunta="¿Qué automatizaciones presenta la guía de CenteIA y cómo se venden?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">guia-diseno-web-centeia-evaluacion</span><br><span class="cobertura-ruta">centeia-materiales/guia-diseno-web-centeia-evaluacion.md</span></td>
+        <td class="num">4</td>
+        <td><details class="cobertura-secciones"><summary>1 secciones</summary><ul class="cobertura-lista-secciones"><li>Guía diseño web completa-CenteIA — evaluación para Dirsi</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué herramientas recomienda la guía de diseño web de CenteIA para diseñar con Claude Code?</span><br><span class="cobertura-sim">sim. 0,696 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué herramientas recomienda la guía de diseño web de CenteIA para diseñar con Claude Code?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">regalo-1-trabajo-delegado-evaluacion</span><br><span class="cobertura-ruta">centeia-materiales/regalo-1-trabajo-delegado-evaluacion.md</span></td>
+        <td class="num">3</td>
+        <td><details class="cobertura-secciones"><summary>1 secciones</summary><ul class="cobertura-lista-secciones"><li>Regalo 1 — Tu primer trabajo delegado a la IA (CenteIA) — evaluación</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Cuál es la regla de oro anti-invención del primer trabajo delegado a la IA?</span><br><span class="cobertura-sim">sim. 0,580 · 1.ª (3 de 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Cuál es la regla de oro anti-invención del primer trabajo delegado a la IA?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">sintesis-videos-2026-11-04</span><br><span class="cobertura-ruta">centeia-materiales/sintesis-videos-2026-11-04.md</span></td>
+        <td class="num">29</td>
+        <td><details class="cobertura-secciones"><summary>10 secciones</summary><ul class="cobertura-lista-secciones"><li>CenteIA — revisión de videos (4 nov 2026)</li><li>1. Capacidad: cómo se «ven» estos videos</li><li>2. CERTIFICADO DE ASISTENCIA — expediente completo (verificado)</li><li>3. NOVEDAD: el precio de CenteIA PRO, dicho en voz alta</li><li>Clase 3 — «Construye una herramienta que automatice tu trabajo» (2:32)</li><li>Clase 2 — «Crea tu segundo yo: IA que trabaja como tú» (2:14)</li><li>Directo extra — «Haz visible el valor de tu segundo yo» (2:15)</li><li>Repaso — «Repaso de todo lo aprendido» (2:09, publicado el 3 nov)</li><li>5. Catálogo del resto (con lo útil de cada uno)</li><li>6. Lo que queda para Antonio (síntesis)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué es el segundo yo 24/7 de CenteIA?</span><br><span class="cobertura-sim">sim. 0,545 · 1.ª (3 de 4 fuentes) · batería, Ciclo 13</span><br><button type="button" class="canario" data-pregunta="¿Qué es el segundo yo 24/7 de CenteIA?">Probar</button></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3>Aprendido — notas de Antonio en mundo-dirsi (8 documentos · 83 fragmentos)</h3>
+  <table class="cobertura-tabla">
+    <thead><tr><th>Documento</th><th>Frag.</th><th>Secciones</th><th>Pregunta medida</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="cobertura-doc">agentes-e-ia</span><br><span class="cobertura-ruta">mundo-dirsi/aprendido/agentes-e-ia.md</span></td>
+        <td class="num">11</td>
+        <td><details class="cobertura-secciones"><summary>6 secciones</summary><ul class="cobertura-lista-secciones"><li>Agentes de código: qué son en la práctica</li><li>Modelos: tamaño, calidad y honestidad</li><li>FreeLLMAPI: el router local</li><li>Destilación y Kimi K3: verificado frente a hype</li><li>Teléfono (Termux + OpenCode) frente a portátil</li><li>Addendum 27 oct 2026 — Kimi K3.1 Pro</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué es un agente de código en la práctica?</span><br><span class="cobertura-sim">sim. 0,821 · 1.ª (3 de 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué es un agente de código en la práctica?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">blockchain-web3</span><br><span class="cobertura-ruta">mundo-dirsi/aprendido/blockchain-web3.md</span></td>
+        <td class="num">13</td>
+        <td><details class="cobertura-secciones"><summary>5 secciones</summary><ul class="cobertura-lista-secciones"><li>Block Ethos: un producto real, no una demo</li><li>Lecciones de la evaluación inicial</li><li>ModelBattle: qué enseñó la comparativa</li><li>Las 10 apps web3: una especialización por app</li><li>Principios web3 que quedan</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué es blockchain y la web3?</span><br><span class="cobertura-sim">sim. 0,799 · las 4 fuentes · batería, Ciclo 14</span><br><button type="button" class="canario" data-pregunta="¿Qué es blockchain y la web3?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">comparacion-prompts-45-vs-90</span><br><span class="cobertura-ruta">mundo-dirsi/aprendido/comparacion-prompts-45-vs-90.md</span></td>
+        <td class="num">11</td>
+        <td><details class="cobertura-secciones"><summary>7 secciones</summary><ul class="cobertura-lista-secciones"><li>Comparación prompt a prompt: los 45 de M8 frente a los 90 de P1</li><li>Pregunta</li><li>Fuentes usadas</li><li>Método</li><li>Resultado</li><li>Dos observaciones</li><li>Conclusión</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Los 45 prompts son un subconjunto de los 90 prompts?</span><br><span class="cobertura-sim">sim. 0,669 · las 4 fuentes · batería, Ciclo 5</span><br><button type="button" class="canario" data-pregunta="¿Los 45 prompts son un subconjunto de los 90 prompts?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">desarrollo-web</span><br><span class="cobertura-ruta">mundo-dirsi/aprendido/desarrollo-web.md</span></td>
+        <td class="num">9</td>
+        <td><details class="cobertura-secciones"><summary>5 secciones</summary><ul class="cobertura-lista-secciones"><li>Principios que se repiten en cada proyecto</li><li>Sistemas de diseño</li><li>Patrones que funcionan</li><li>Verificación por renderizado</li><li>Lo que falló y por qué</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué principio de desarrollo web dice que cada app debe tener una sola especialización?</span><br><span class="cobertura-sim">sim. 0,665 · 1.ª (3 de 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué principio de desarrollo web dice que cada app debe tener una sola especialización?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">despliegue</span><br><span class="cobertura-ruta">mundo-dirsi/aprendido/despliegue.md</span></td>
+        <td class="num">10</td>
+        <td><details class="cobertura-secciones"><summary>4 secciones</summary><ul class="cobertura-lista-secciones"><li>Render: lo que hay que saber antes de prometer nada</li><li>PythonAnywhere: el camino sin tarjeta</li><li>Runbook de despliegue (lecciones)</li><li>Manejo de archivos .env y secretos</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Cómo se despliega una aplicación?</span><br><span class="cobertura-sim">sim. 0,502 · posiciones 1–3 · batería, Ciclo 2</span><br><button type="button" class="canario" data-pregunta="¿Cómo se despliega una aplicación?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">herramientas-y-conexiones</span><br><span class="cobertura-ruta">mundo-dirsi/aprendido/herramientas-y-conexiones.md</span></td>
+        <td class="num">8</td>
+        <td><details class="cobertura-secciones"><summary>4 secciones</summary><ul class="cobertura-lista-secciones"><li>GitHub: el conector y sus lecciones</li><li>Rutas con el navegador y la sesión del usuario</li><li>Comportamiento ante las aprobaciones</li><li>Archivos temporales y persistencia</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Por qué el conector de GitHub no crea repositorios?</span><br><span class="cobertura-sim">sim. 0,713 · 1.ª (3 de 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Por qué el conector de GitHub no crea repositorios?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">ingenieria-inversa</span><br><span class="cobertura-ruta">mundo-dirsi/aprendido/ingenieria-inversa.md</span></td>
+        <td class="num">10</td>
+        <td><details class="cobertura-secciones"><summary>6 secciones</summary><ul class="cobertura-lista-secciones"><li>Qué es REA</li><li>El método de sala limpia</li><li>Clasificación de evidencia</li><li>El experimento con y sin control</li><li>Advertencia: repositorios falsos</li><li>Límites</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué es REA y para qué sirve?</span><br><span class="cobertura-sim">sim. 0,526 · 1.ª · batería, Ciclo 14</span><br><button type="button" class="canario" data-pregunta="¿Qué es REA y para qué sirve?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">portafolio-y-empleo</span><br><span class="cobertura-ruta">mundo-dirsi/aprendido/portafolio-y-empleo.md</span></td>
+        <td class="num">11</td>
+        <td><details class="cobertura-secciones"><summary>7 secciones</summary><ul class="cobertura-lista-secciones"><li>Posicionamiento: lo que ve un reclutador, en orden</li><li>Fórmula del titular de LinkedIn</li><li>Preparación de entrevistas: el temario de 25 preguntas</li><li>Rutas de ingreso: qué se decidió</li><li>Regla dura: nunca comprar mentoría de alto precio</li><li>Actualización 27 oct 2026 — certificados y plataformas</li><li>Actualización 16 nov 2026 — portafolio publicado y repos ordenados</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Dónde está publicado el portafolio de Antonio?</span><br><span class="cobertura-sim">sim. 0,513 · fuentes 1, 2 y 4 · batería, Ciclo 13</span><br><button type="button" class="canario" data-pregunta="¿Dónde está publicado el portafolio de Antonio?">Probar</button></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3>Registros de mejora — qué se arregló en cada app (Fase 2) (15 documentos · 425 fragmentos)</h3>
+  <table class="cobertura-tabla">
+    <thead><tr><th>Documento</th><th>Frag.</th><th>Secciones</th><th>Pregunta medida</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="cobertura-doc">anti-phishing</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/anti-phishing-improvement-log.md</span></td>
+        <td class="num">26</td>
+        <td><details class="cobertura-secciones"><summary>11 secciones</summary><ul class="cobertura-lista-secciones"><li>[A-A1 · ALTA · Contenido] Caso 9 (typosquatting) corregido: estaba invertido</li><li>[A-M2 · alineado con A-A1] Explicación del caso 4 reescrita para no contradecirse</li><li>[A-M1 · MEDIA · Regla dura/etiquetado] Marca de ficción en los dos dominios registrables que no la llevaban</li><li>[A-B4 parcial · BAJA · Accesibilidad] Progreso y feedback anunciables + [A-B3] `.gitignore`</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>[A-B1 · BAJA · Contenido] Caso 10: los errores citados ya están en la evidencia</li><li>[A-B2 · BAJA · Contenido] Caso 8: el truncado se declara representación en pantalla</li><li>[A-B8 · BAJA · Contenido] Casos 6 y 11: evidencia mostrada, no narrada</li><li>[A-B7 · BAJA · UX] «Reiniciar partida» pide confirmación si hay progreso</li><li>Pendientes de esta app (con motivo)</li><li>[Tests · Red permanente] `scripts/verify-data.mjs` + «npm test» (patrón de block-explorer/nft-studio, Ciclo 7, y hash-lab/gas-calc, Ciclo 8). Nota de conteo verificada en este ciclo: con estas tres apps son **9 de 10** las web3 con suelo de tests — tx-builder no tiene `scripts/` ni `test` en su `package.json` (comprobado hoy; queda fuera del alcance de este ciclo, se deja constancia para el coordinador)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Cuántas comprobaciones tiene el test de anti-phishing?</span><br><span class="cobertura-sim">sim. 0,597 · las 4 fuentes · batería, Ciclo 9</span><br><button type="button" class="canario" data-pregunta="¿Cuántas comprobaciones tiene el test de anti-phishing?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">api-segundo-yo</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/api-segundo-yo-improvement-log.md</span></td>
+        <td class="num">28</td>
+        <td><details class="cobertura-secciones"><summary>13 secciones</summary><ul class="cobertura-lista-secciones"><li>API-A1 (alta) — Validación real de payloads</li><li>API-M1 (media) — Errores 404/405 en JSON</li><li>API-M4 / higiene (media) — `.gitignore`</li><li>API-M2 (media) — Vocabulario de bloques incompatible entre apps hermanas</li><li>API-B1 (baja) — Adiós a la API legada `Query.get()`</li><li>API-B2 (baja) — Dependencias fijadas</li><li>API-B4 (baja) — La búsqueda de texto ya es literal</li><li>API-B5 (baja) — Siembra por tabla, sin KeyError latente</li><li>API-B8 (baja) — «Rearrancar» fuera</li><li>Nota sobre API-B3</li><li>Verificaciones (triple, con artefacto por contenido)</li><li>Suelo de calidad verificable — Smoke test automático de la API</li><li>Documentación integrada — Inventario de errores incompleto en `DOCS_HTML`</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué validación real de payloads se añadió a la API del segundo yo?</span><br><span class="cobertura-sim">sim. 0,569 · 1.ª (3 de 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué validación real de payloads se añadió a la API del segundo yo?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">barberia</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/barberia-improvement-log.md</span></td>
+        <td class="num">74</td>
+        <td><details class="cobertura-secciones"><summary>43 secciones</summary><ul class="cobertura-lista-secciones"><li>Improvement log — Demo local Barbería</li><li>A1 — Reprogramar con `professional_id` inexistente corrompía la BD</li><li>A2 — Sin validación de tipos + depurador de Werkzeug expuesto</li><li>A3 — Exposición de datos sin autenticación (mitigación de demo)</li><li>M2 (parcial) — `?date=` inválida devolvía TODO el historial</li><li>M1 — Se podían reservar citas en fechas pasadas</li><li>M5 — La fecha «hoy» del frontend se calculaba en UTC</li><li>B7 (parcial, textos tocados) — Tildes en mensajes del backend</li><li>Regresión — flujos buenos intactos (smoke curl, 33/33 PASS)</li><li>2026-11-02 — Ciclo 2 (hallazgos MEDIA de UX/accesibilidad)</li><li>M6 — El error de cancelación era invisible en el panel de confirmación</li><li>M7 — Contraste AA en botones WhatsApp y peligro</li><li>M4 — El chat se tragaba el texto libre en 8 pasos del flujo</li><li>Extras baratos incluidos (bajas B12/B8, sin riesgo para lo anterior)</li><li>Regresión — flujos buenos intactos (smoke curl, versión corta)</li><li>Pendiente (fuera del alcance de este ciclo, sin tocar)</li><li>2026-11-02 — Ciclo 3 (medias/bajas restantes: M10, M9, M3, M8, B5, B13–B17)</li><li>M10 — Estado de carga en todas las peticiones</li><li>M9 — Formato de nombre y teléfono en el backend</li><li>M3 (resto) — Red de seguridad del frontend al parsear</li><li>M8 (residual) — CORS restringido a orígenes locales</li><li>B13 — Objetivos táctiles de 44 px en los selectores de hora</li><li>B14 — Disponibilidad sin una consulta por hueco</li><li>B16 — El botón de WhatsApp ya no sale de la demo</li><li>B17 — Restos del chat y fuentes de verdad del horario</li><li>B5 — Huecos muertos de 10 minutos tras una Barba: documentado</li><li>Regresión — flujos buenos intactos (smoke curl)</li><li>Pendiente (con motivo, sin forzar)</li><li>2026-11-02 — Ciclo 4 (bajas residuales B1–B4 y B9–B11 seguras)</li><li>Punto de partida verificado en vivo (antes de tocar nada)</li><li>B4 (resto) — Mensajes que aún no describían el problema real</li><li>B2 (cierre documental) — Semántica de `professional_id` opcional</li><li>B9 — Higiene: `.gitignore` y deriva de dependencias</li><li>B10 — Omisiones del README: ya cerradas en ciclos anteriores</li><li>B11 — `index.html`: descripción y favicon</li><li>Regresión + batería del ciclo (smoke curl, 26/26 PASS)</li><li>2026-11-02 — Fase 2, Ciclo 10 (smoke permanente)</li><li>Smoke ejecutable — los humos manuales de los Ciclos 1–3, fijados</li><li>Triple verificación reforzada</li><li>2026-11-02 — Fase 2, Ciclo 11 (verificación cruzada frontend↔backend)</li><li>Inventario de constantes de catálogo del frontend (V3, leído de los archivos reales en esta sesión)</li><li>Cambio — `scripts/verify-catalog.py` permanente</li><li>Fuera de alcance, sin tocar</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué verifica el script verify-catalog de la barbería?</span><br><span class="cobertura-sim">sim. 0,581 · las 4 fuentes · batería, Ciclo 11</span><br><button type="button" class="canario" data-pregunta="¿Qué verifica el script verify-catalog de la barbería?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">biblioteca-prompts</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/biblioteca-prompts-improvement-log.md</span></td>
+        <td class="num">23</td>
+        <td><details class="cobertura-secciones"><summary>9 secciones</summary><ul class="cobertura-lista-secciones"><li>BIB-A1 (alta) — 15 roles anunciados, solo 8 con prompt</li><li>BIB-M1 (media) — Confirmación de guardado invisible</li><li>BIB-M3 / higiene (media) — `.gitignore`</li><li>BIB-M2 (media) — Patrón de pestañas ARIA completo</li><li>BIB-B6 (baja) — Meta descripción y favicon, por fin</li><li>Bajas seguras de este ciclo</li><li>Verificaciones (triple, con artefacto por contenido)</li><li>BIB-B10 (baja, parte de tests) — Suelo de calidad verificable: script de datos sin dependencias</li><li>BIB-B10 (baja, resto: lint) — ESLint flat instalado y limpio; BIB-B10 cerrado</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué pasó con los 15 roles anunciados en la biblioteca de prompts si solo 8 tenían prompt?</span><br><span class="cobertura-sim">sim. 0,637 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué pasó con los 15 roles anunciados en la biblioteca de prompts si solo 8 tenían prompt?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">block-explorer</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/block-explorer-improvement-log.md</span></td>
+        <td class="num">29</td>
+        <td><details class="cobertura-secciones"><summary>11 secciones</summary><ul class="cobertura-lista-secciones"><li>[E-M1 · MEDIA · Contenido] Ninguna transacción «pendiente» dentro de bloques ya minados</li><li>[E-M2 · MEDIA · README/datos] Determinismo: el README ahora dice la verdad (decisión anotada)</li><li>[E-B3 · BAJA · Lógica] Buscar «0x» ya no devuelve los 25 bloques + [E-B1] posición desde 1 + [E-B5] copia honesta + [E-B6 parcial] `.gitignore`</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>[E-B6 resto · BAJA · Higiene] Favicon propio (el pendiente declarado del Ciclo 3)</li><li>[E-B2 · BAJA · Código muerto] Variable `prevHash` abandonada e import sin extensión</li><li>[E-B4 · BAJA · Robustez] Red de seguridad ante datos fuera de catálogo</li><li>[E-B7 · BAJA · Contenido] El bloque 1 ya explica su «hash anterior» de ceros (génesis)</li><li>Verificación 3 global del ciclo (contenido del bundle + comparación)</li><li>[Tests · Red permanente] `scripts/verify-data.mjs` + «npm test» (patrón de portfolio-apps, Ciclo 4)</li><li>2026-11-02 · Fase 2, Ciclo 12 — Estilo/inmutabilidad (oxlint clase b): `toReversed()`</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué cambió toReversed en block-explorer?</span><br><span class="cobertura-sim">sim. 0,538 · las 4 fuentes · batería, Ciclo 12</span><br><button type="button" class="canario" data-pregunta="¿Qué cambió toReversed en block-explorer?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">contract-play</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/contract-play-improvement-log.md</span></td>
+        <td class="num">17</td>
+        <td><details class="cobertura-secciones"><summary>5 secciones</summary><ul class="cobertura-lista-secciones"><li>CONTRACT-A1 (C-1 + C-2 + C-3) — Simulador alineado con los fragmentos</li><li>CONTRACT-C3-1 (C-4, MEDIA) — `transfer` con advertencia, sin cambiar su semántica</li><li>CONTRACT-C3-2 (C-5 + C-7 + C-9 parcial) — Matices de fragmentos y copia honesta</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>[Tests · Red permanente] `scripts/verify-data.mjs` + «npm test» (patrón de block-explorer/nft-studio, Ciclo 7, y hash-lab/gas-calc, Ciclo 8). Nota de conteo verificada en este ciclo: con estas tres apps son **9 de 10** las web3 con suelo de tests — tx-builder no tiene `scripts/` ni `test` en su `package.json` (comprobado hoy; queda fuera del alcance de este ciclo, se deja constancia para el coordinador)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué cambió en el simulador de contratos de contract-play para alinearse con los fragmentos?</span><br><span class="cobertura-sim">sim. 0,614 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué cambió en el simulador de contratos de contract-play para alinearse con los fragmentos?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">dao-vote</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/dao-vote-improvement-log.md</span></td>
+        <td class="num">19</td>
+        <td><details class="cobertura-secciones"><summary>9 secciones</summary><ul class="cobertura-lista-secciones"><li>[D-A1 · ALTA · Lógica] Filtros «Activas»/«Cerradas» corregidos: devolvían siempre 0</li><li>[D-M1 · MEDIA · Diseño] Paleta diferenciada de tx-builder (acotada) + [D-B4] contraste ≥4,5:1</li><li>[D-B1 · BAJA · Contenido] El texto de «rechazada» ya no miente en caso de empate</li><li>[D-B3 · BAJA · Localización] «Grants» → «Subvenciones»</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): sin cambio, identidad suficiente</li><li>[D-B2 · BAJA · Etiquetado] Cantidades en USDC marcadas como de ejemplo donde se vota</li><li>[D-B6 parcial · BAJA · Código] Memo real y voto con defensa</li><li>[D-B7 · BAJA · Lógica] PENDIENTE — exige decisión, no corrección segura</li><li>[Tests · Red permanente] `scripts/verify-data.mjs` + «npm test» (patrón de block-explorer/nft-studio, Ciclo 7, y hash-lab/gas-calc, Ciclo 8). Nota de conteo verificada en este ciclo: con estas tres apps son **9 de 10** las web3 con suelo de tests — tx-builder no tiene `scripts/` ni `test` en su `package.json` (comprobado hoy; queda fuera del alcance de este ciclo, se deja constancia para el coordinador)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Por qué los filtros Activas y Cerradas de DAO Vote devolvían siempre 0?</span><br><span class="cobertura-sim">sim. 0,693 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Por qué los filtros Activas y Cerradas de DAO Vote devolvían siempre 0?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">gas-calc</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/gas-calc-improvement-log.md</span></td>
+        <td class="num">16</td>
+        <td><details class="cobertura-secciones"><summary>6 secciones</summary><ul class="cobertura-lista-secciones"><li>GAS-A1 (G-1 + G-3 + G-4) — Wei exacto, fórmula verdadera, magnitudes y EIP-1559</li><li>GAS-A2 (G-2) — Campo «Unidades de gas» editable al teclear</li><li>GAS-C3-1 (G-5) — HTML válido en la explicación y resultado con región viva</li><li>GAS-C3-2 (G-7 + G-8 + G-10) — Iconos distintos, comparativa coherente, higiene</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>[Tests · Red permanente] `scripts/verify-data.mjs` + «npm test» (patrón de block-explorer/nft-studio, Ciclo 7)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué corrigió gas-calc sobre el wei exacto y EIP-1559?</span><br><span class="cobertura-sim">sim. 0,710 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué corrigió gas-calc sobre el wei exacto y EIP-1559?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">hash-lab</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/hash-lab-improvement-log.md</span></td>
+        <td class="num">27</td>
+        <td><details class="cobertura-secciones"><summary>8 secciones</summary><ul class="cobertura-lista-secciones"><li>HASH-A1 (H-1 + H-3 del diagnóstico) — Validez transitiva y Restaurar honesto</li><li>HASH-C2-1 (H-2) — SHA-256 estándar también con surrogados solitarios</li><li>HASH-C2-2 (H-4) — Tope de longitud: el recálculo por tecla no congela la pestaña</li><li>HASH-C3-1 (H-5 + H-6 + H-7) — Copia honesta, placeholder legible y botones distinguibles</li><li>HASH-C3-2 (H-8, parcial) — Favicon propio y fuera la plantilla sin uso</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>2026-11-02 · Fase 2, Ciclo 5 — Alineación de versiones del conjunto web3 (GR-2): bajada a React 18 / Vite 6</li><li>[Tests · Red permanente] `scripts/verify-data.mjs` + «npm test» (patrón de block-explorer/nft-studio, Ciclo 7)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué es la validez transitiva en hash-lab y qué cambió en Restaurar?</span><br><span class="cobertura-sim">sim. 0,707 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué es la validez transitiva en hash-lab y qué cambió en Restaurar?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">mundo-vida-ia</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/mundo-vida-ia-improvement-log.md</span></td>
+        <td class="num">35</td>
+        <td><details class="cobertura-secciones"><summary>10 secciones</summary><ul class="cobertura-lista-secciones"><li>El fallo — UnicodeEncodeError en el primer print con «ñ»</li><li>La suite — los invariantes de los ciclos 1-5, fijados como regresión ejecutable</li><li>MUNDO-M3 — Nombres duplicados corrompían el índice por nombre</li><li>MUNDO-M4 — Imports absolutos sin paquete: el motor solo corría vía la demo</li><li>MUNDO-M1 — Sin `.gitignore` en todo el proyecto</li><li>MUNDO-M2 — El README afirmaba una variabilidad que el determinismo desmiente</li><li>Visor — diseño genérico: una decisión visual acotada</li><li>MUNDO-M5 — El texto generado salía sistemáticamente sin tildes</li><li>MUNDO-A1 — La demo escribía en una ruta absoluta fija</li><li>MUNDO-A2 — El motor no rechazaba lugares ni acciones inválidas</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué se arregló en mundo-vida-ia para las consolas ASCII?</span><br><span class="cobertura-sim">sim. 0,545 · las 4 fuentes · batería, Ciclo 13</span><br><button type="button" class="canario" data-pregunta="¿Qué se arregló en mundo-vida-ia para las consolas ASCII?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">nft-studio</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/nft-studio-improvement-log.md</span></td>
+        <td class="num">30</td>
+        <td><details class="cobertura-secciones"><summary>10 secciones</summary><ul class="cobertura-lista-secciones"><li>[N-M1 · MEDIA · Lógica/UX] El resultado del minteo ya no se pierde al cerrar el modal con la X</li><li>[N-M2 · MEDIA · Diseño] Una decisión visual acotada: serif editorial de galería para los títulos</li><li>Bajas seguras del diagnóstico</li><li>[N-B5 resto · accesibilidad] El modal de minteo atrapa el foco, cierra con Escape y devuelve el foco al abrirse</li><li>Bajas seguras del diagnóstico incluidas</li><li>Pendiente (con motivo, sin forzar)</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>[N-B6 · BAJA · Diseño/responsive] Estadísticas a 360 px: la fila envuelve en pantallas muy estrechas</li><li>[N-B8 · BAJA · Stack/README] nft-studio alineada a la línea de sus hermanas (misma operación que hash-lab en el Ciclo 5)</li><li>[Tests · Red permanente] `scripts/verify-data.mjs` + «npm test» (patrón de portfolio-apps, Ciclo 4)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿A qué versiones se alineó nft-studio en el Ciclo 6?</span><br><span class="cobertura-sim">sim. 0,570 · las 4 fuentes · batería, Ciclo 6</span><br><button type="button" class="canario" data-pregunta="¿A qué versiones se alineó nft-studio en el Ciclo 6?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">segundo-yo</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/segundo-yo-improvement-log.md</span></td>
+        <td class="num">24</td>
+        <td><details class="cobertura-secciones"><summary>9 secciones</summary><ul class="cobertura-lista-secciones"><li>SEG-M4 / higiene (media) — `.gitignore`</li><li>Diseño (medias de diseño del diagnóstico) — Una decisión visual fuerte: la ficha como tarjeta de identidad</li><li>SEG-M1 (media) — Persistencia: lo creado ya no se pierde al recargar</li><li>SEG-M2 (media) — El skip-link ya salta de verdad</li><li>SEG-M3 (media) — Glosario sin claves duplicadas</li><li>Bajas de este ciclo</li><li>Verificaciones (triple, con artefacto por contenido)</li><li>SEG-B8 (baja, parte de tests) — Suelo de calidad verificable: script de datos sin dependencias</li><li>SEG-B8 (baja, resto: lint) — ESLint flat instalado y limpio; SEG-B8 cerrado</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué decisión visual fuerte se tomó en la app segundo-yo con la ficha como tarjeta de identidad?</span><br><span class="cobertura-sim">sim. 0,706 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Qué decisión visual fuerte se tomó en la app segundo-yo con la ficha como tarjeta de identidad?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">token-explorer</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/token-explorer-improvement-log.md</span></td>
+        <td class="num">26</td>
+        <td><details class="cobertura-secciones"><summary>10 secciones</summary><ul class="cobertura-lista-secciones"><li>Improvement log — token-explorer</li><li>TOKEN-C2-1 (T-1) — Renombrado el token que colisionaba con uno real</li><li>TOKEN-C2-2 (T-3) — Contraste de avatares ≥4,5:1 en los 12 tokens</li><li>TOKEN-C3-1 (T-4 + T-6c + T-7) — Sin copiar la dirección falsa, gráfica y reparto claros</li><li>TOKEN-C3-2 (T-8 + T-9 + T-10) — «mil millones», «Órbita» e higiene</li><li>TOKEN-C4-1 (T-2) — El foco entra al detalle y vuelve a su tarjeta</li><li>TOKEN-C4-2 (T-5) — Tarjetas `&lt;article&gt;` con botón interno válido</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>TOKEN-C9-1 — Suelo de tests permanente (`scripts/verify-data.mjs` + `npm test`)</li><li>2026-11-02 · Fase 2, Ciclo 12 — Estilo/inmutabilidad (oxlint clase b): `toSorted()`</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Por qué se renombró un token en token-explorer?</span><br><span class="cobertura-sim">sim. 0,538 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Por qué se renombró un token en token-explorer?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">tx-builder</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/tx-builder-improvement-log.md</span></td>
+        <td class="num">27</td>
+        <td><details class="cobertura-secciones"><summary>7 secciones</summary><ul class="cobertura-lista-secciones"><li>[T-A1 · ALTA · Regla dura] Direcciones canónicas de documentación sustituidas por direcciones ficticias</li><li>[T-M2 parcial · etiquetado] La etiqueta «Datos de ejemplo · Simulado» ahora aparece en cada paso y en el historial</li><li>[T-M1 · MEDIA · Lógica/contenido] La validación ya incluye el gas: el total (valor + gas) no puede superar el saldo sin aviso y bloqueo</li><li>[T-B4 · BAJA · Lógica] «¡Copiado!» solo si la copia tuvo éxito + [T-B3] `.gitignore`</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>2026-11-02 · Fase 2, Ciclo 6 — Alineación de Vite a la línea del conjunto web3 (GR-2)</li><li>2026-11-02 · Fase 2, Ciclo 10 — Suelo de tests permanente (`scripts/verify-data.mjs` + `npm test`)</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Qué suelo de tests se añadió a tx-builder en el Ciclo 10?</span><br><span class="cobertura-sim">sim. 0,674 · las 4 fuentes · batería, Ciclo 10</span><br><button type="button" class="canario" data-pregunta="¿Qué suelo de tests se añadió a tx-builder en el Ciclo 10?">Probar</button></td>
+      </tr>
+      <tr>
+        <td><span class="cobertura-doc">wallet-sim</span><br><span class="cobertura-ruta">rag-demo/corpus-extra/wallet-sim-improvement-log.md</span></td>
+        <td class="num">24</td>
+        <td><details class="cobertura-secciones"><summary>10 secciones</summary><ul class="cobertura-lista-secciones"><li>Improvement log — wallet-sim</li><li>WALLET-C2-1 (W-1 del diagnóstico) — Estado guardado validado: nada de pantalla en blanco</li><li>WALLET-C2-2 (W-3) — Cartera nueva a 0; faucet explícito y etiquetado</li><li>WALLET-C2-3 (W-4) — Precisión interna entera: enviar/recibir conserva el total</li><li>WALLET-C3-1 (W-5 + W-6 + W-7 + W-9) — Feedback y estados que dicen la verdad</li><li>WALLET-C3-2 (W-8 + W-10) — Formato uniforme del historial e higiene</li><li>WALLET-C4-1 (W-2) — Etiqueta «demo» persistente junto a cada dirección</li><li>2026-11-02 · Fase 2, Ciclo 4 — Coherencia visual (GR-1): firma de cabecera</li><li>WALLET-C9-1 — Suelo de tests permanente (`scripts/verify-data.mjs` + `npm test`)</li><li>2026-11-02 · Fase 2, Ciclo 12 — Estilo/inmutabilidad (oxlint clase b): `toSorted()`</li></ul></details></td>
+        <td><span class="cobertura-pregunta">¿Por qué la cartera nueva de wallet-sim empieza a 0 y qué hace el faucet?</span><br><span class="cobertura-sim">sim. 0,512 · 1.ª (las 4 fuentes) · canario 16 nov 2026</span><br><button type="button" class="canario" data-pregunta="¿Por qué la cartera nueva de wallet-sim empieza a 0 y qué hace el faucet?">Probar</button></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="cobertura-nota">Detalle por documento de la ingesta del Ciclo 14 (16 nov 2026). Si el índice cargado trae otros conteos, la página lo avisa aquí mismo y muestra los conteos vivos en el resumen.</p>
+</details>
 
   <section class="tarjeta" id="resultado" aria-live="polite" hidden>
     <p class="respuesta-texto" id="respuesta-texto"></p>
@@ -347,14 +721,22 @@
       <span class="etiqueta" id="etiqueta-confianza"></span>
       <span class="similitud" id="similitud"></span>
     </div>
+    <div class="compartir">
+      <button type="button" class="secundario" id="copiar-enlace">Copiar enlace a esta respuesta</button>
+      <span class="compartir-nota" id="copiar-nota" aria-live="polite"></span>
+    </div>
     <div id="fuentes"></div>
   </section>
 
   <section class="tarjeta" id="historial" aria-label="Historial de la sesión" hidden>
-    <h2>Historial de la sesión</h2>
+    <div class="historial-cabecera">
+      <h2>Historial de la sesión</h2>
+      <button type="button" class="secundario" id="limpiar-historial">Limpiar historial</button>
+    </div>
     <ol class="historial-lista" id="historial-lista"></ol>
     <p class="historial-nota">Solo vive en esta página: al recargar se
-    borra. La más reciente queda arriba.</p>
+    borra. La más reciente queda arriba. Pulsa una pregunta para
+    volver a usarla.</p>
   </section>
 
   <p class="error-caja" id="error-caja" role="alert" hidden></p>
@@ -364,7 +746,9 @@
     ningún modelo de lenguaje las redactó. Si la mejor similitud queda
     por debajo de 0,50, el asistente dice que no encontró resultados
     claros en vez de inventar. La API sigue disponible en
-    <code>/api/health</code> y <code>POST /preguntar</code>.
+    <code>/api/health</code> y <code>POST /preguntar</code>. Cada
+    respuesta tiene su enlace compartible: abre la página con
+    <code>?q=tu-pregunta</code> y la pregunta se ejecuta sola.
   </footer>
 </main>
 <script>
@@ -377,6 +761,7 @@
   var campo = document.getElementById("pregunta");
   var contador = document.getElementById("contador");
   var boton = document.getElementById("boton-preguntar");
+  var kSelect = document.getElementById("k-fuentes");
   var cargando = document.getElementById("cargando");
   var resultado = document.getElementById("resultado");
   var respuestaTexto = document.getElementById("respuesta-texto");
@@ -385,9 +770,28 @@
   var fuentesDiv = document.getElementById("fuentes");
   var errorCaja = document.getElementById("error-caja");
   var ejemplos = document.querySelectorAll(".ejemplo");
+  var canarios = document.querySelectorAll(".canario");
+  var copiarEnlace = document.getElementById("copiar-enlace");
+  var copiarNota = document.getElementById("copiar-nota");
   var historial = document.getElementById("historial");
   var historialLista = document.getElementById("historial-lista");
+  var limpiarHistorial = document.getElementById("limpiar-historial");
   var indiceListo = false;
+  var preguntaActual = "";
+  var preguntaPendiente = null;
+  // Enlace profundo (?q=): la pregunta viaja en la URL. Si la
+  // página se abre con ?q=..., el campo se rellena y la
+  // pregunta se ejecuta sola en cuanto el índice está listo
+  // (ver el arranque tras /api/health). Se recorta a 1000
+  // caracteres, el máximo que acepta la API.
+  var preguntaEnlace = new URLSearchParams(window.location.search).get("q");
+  if (preguntaEnlace) {
+    preguntaEnlace = preguntaEnlace.trim().slice(0, 1000);
+    if (preguntaEnlace) {
+      campo.value = preguntaEnlace;
+      preguntaPendiente = preguntaEnlace;
+    }
+  }
 
   function escapar(texto) {
     return String(texto)
@@ -417,13 +821,148 @@
       f.relevancia.toFixed(3);
   }
 
+  // Réplica en JS de rag_core._raices: palabras de 4+ letras, sin
+  // tildes ni palabras vacías, recortadas a 6 caracteres. La API ya
+  // devuelve archivo, sección y fragmento por fuente, así que la
+  // página puede recomponer qué términos compartió cada fuente con
+  // la pregunta — y comprobar que la bonificación léxica que declara
+  // la API coincide con ese cálculo (pesos 0,30 título y 0,10 texto).
+  // Si no coincide, la línea léxica no se afirma.
+  var PALABRAS_VACIAS = {
+    como: 1, cual: 1, cuales: 1, que: 1, para: 1, una: 1, unos: 1,
+    unas: 1, del: 1, las: 1, los: 1, por: 1, con: 1, sin: 1, hace: 1,
+    hoy: 1, cuando: 1, donde: 1, desde: 1, entre: 1, sobre: 1,
+    segun: 1, esto: 1, esta: 1, este: 1, es: 1
+  };
+
+  function raices(texto) {
+    var plano = String(texto || "").toLowerCase()
+      .normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+    var palabras = plano.match(/[a-z0-9]+/g) || [];
+    var conjunto = {};
+    palabras.forEach(function (p) {
+      if (p.length >= 4 && PALABRAS_VACIAS[p] !== 1) {
+        conjunto[p.slice(0, 6)] = 1;
+      }
+    });
+    return conjunto;
+  }
+
+  function palabrasDeEjemplo(pregunta, raicesCompartidas, maximo) {
+    // Las palabras de la pregunta (tal como se escribieron, en
+    // minúsculas) cuyas raíces están entre las compartidas.
+    var vistas = {};
+    var ejemplos = [];
+    String(pregunta || "").toLowerCase()
+      .split(/[^a-záéíóúüñ0-9]+/)
+      .forEach(function (p) {
+        if (p.length < 4 || PALABRAS_VACIAS[p] === 1 || vistas[p] === 1) return;
+        vistas[p] = 1;
+        var plano = p.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+        if (raicesCompartidas[plano.slice(0, 6)] === 1) {
+          ejemplos.push("«" + p + "»");
+        }
+      });
+    return ejemplos.slice(0, maximo || 3);
+  }
+
+  // «Por qué esta fuente»: la misma explicación del ranking que ya
+  // da el desglose numérico (similitud + bonificación = relevancia),
+  // en lenguaje llano. Todo sale de datos que la API ya devuelve
+  // (similitud, relevancia, bonificación léxica, archivo, sección,
+  // fragmento) más la pregunta que el visitante escribió.
+  function porQueFuente(f, pregunta, indice, total) {
+    var partes = [];
+    if (indice === 1) {
+      partes.push("La mejor coincidencia del corpus.");
+    } else {
+      partes.push("Coincidencia n.º " + indice + " de " + total + ".");
+    }
+    var sim = (typeof f.similitud === "number") ? f.similitud : null;
+    if (sim !== null) {
+      if (sim >= 0.70) {
+        partes.push("Su significado es muy parecido al de tu pregunta.");
+      } else if (sim >= 0.50) {
+        partes.push("Su significado es parecido al de tu pregunta.");
+      } else {
+        partes.push("Su significado es parecido, aunque débil.");
+      }
+    }
+    var rPregunta = raices(pregunta);
+    var claves = Object.keys(rPregunta);
+    if (claves.length > 0) {
+      var rTitulo = raices((f.archivo || "") + " " + (f.seccion || ""));
+      var rTexto = raices(f.fragmento || "");
+      var enTitulo = claves.filter(function (r) { return rTitulo[r] === 1; });
+      var enTexto = claves.filter(function (r) { return rTexto[r] === 1; });
+      var esperado = 0.30 * enTitulo.length / claves.length +
+        0.10 * enTexto.length / claves.length;
+      var coincide = (typeof f.bonificacion_lexica === "number") &&
+        Math.abs(esperado - f.bonificacion_lexica) < 0.002;
+      if (enTitulo.length === 0 && enTexto.length === 0) {
+        partes.push("No comparte palabras literales con tu pregunta: " +
+          "entra solo por parecido de significado.");
+      } else if (coincide) {
+        var unidas = {};
+        enTitulo.concat(enTexto).forEach(function (r) { unidas[r] = 1; });
+        var ejemplos = palabrasDeEjemplo(pregunta, unidas, 3);
+        var detalle = "Comparte términos con tu pregunta: " +
+          enTitulo.length + " de " + claves.length +
+          " en su título y sección, " + enTexto.length + " de " +
+          claves.length + " en su texto";
+        if (ejemplos.length > 0) {
+          detalle += " (" + ejemplos.join(", ") + ")";
+        }
+        detalle += ".";
+        partes.push(detalle);
+      }
+      // Si el cálculo no coincide con la bonificación que declara la
+      // API, la línea léxica no se afirma: mejor callar ese detalle
+      // que explicar mal el ranking.
+    }
+    return partes.join(" ");
+  }
+
+  function actualizarEnlace(pregunta) {
+    // La URL refleja la pregunta actual para que cada respuesta sea
+    // compartible: un enlace con ?q= ejecuta la pregunta al abrirse.
+    // Ruta relativa: la página no contiene URLs absolutas.
+    try {
+      history.replaceState(null, "", "?q=" + encodeURIComponent(pregunta));
+    } catch (e) { /* file:// o navegador sin History API: sin enlace */ }
+  }
+
+  function sincronizarCobertura(h) {
+    // El mapa detalla la ingesta del Ciclo 14; los conteos vivos
+    // vienen de /api/health. Si coinciden, nada cambia; si difieren
+    // (re-ingesta con otro corpus), el resumen muestra los vivos y
+    // el aviso explica que la tabla es de la ingesta anterior.
+    var resumen = document.getElementById("cobertura-resumen");
+    var aviso = document.getElementById("cobertura-aviso");
+    if (!resumen || !aviso) return;
+    if (typeof h.documentos !== "number" ||
+        typeof h.fragmentos !== "number") return;
+    if (h.documentos === 28 && h.fragmentos === 572) return;
+    resumen.textContent = "Qué puedo responder — mapa de cobertura: " +
+      h.documentos + " documentos · " + h.fragmentos +
+      " fragmentos en el índice actual";
+    aviso.textContent = "La tabla de abajo detalla la ingesta del Ciclo 14 " +
+      "(28 documentos · 572 fragmentos); el índice cargado trae otros " +
+      "conteos. La tabla se actualiza regenerándola con " +
+      "generar-mapa-cobertura.py tras cada re-ingesta.";
+    aviso.hidden = false;
+  }
+
   function actualizarBoton() {
     var texto = campo.value.trim();
     boton.disabled = !indiceListo || texto.length === 0;
     contador.textContent = campo.value.length + " / 1000";
-    // Sin índice el campo está deshabilitado: los ejemplos también,
-    // para no invitar a rellenar una pregunta que no se puede enviar.
+    // Sin índice el campo está deshabilitado: los ejemplos y el
+    // selector de fuentes también, para no invitar a preparar una
+    // pregunta que no se puede enviar.
     ejemplos.forEach(function (b) { b.disabled = campo.disabled; });
+    kSelect.disabled = campo.disabled;
+    canarios.forEach(function (b) { b.disabled = campo.disabled; });
   }
 
   function agregarHistorial(pregunta, confianza, similitudMaxima) {
@@ -432,16 +971,25 @@
     // que una pregunta con <script> no pueda inyectar nada.
     var entrada = document.createElement("li");
     entrada.className = "historial-entrada";
-    var preguntaSpan = document.createElement("span");
-    preguntaSpan.className = "historial-pregunta";
-    preguntaSpan.textContent = pregunta;
+    var preguntaBoton = document.createElement("button");
+    preguntaBoton.type = "button";
+    preguntaBoton.className = "historial-boton";
+    preguntaBoton.textContent = pregunta;
+    // Pulsar una pregunta del historial la vuelve a poner en el
+    // campo para enviarla de nuevo o editarla; no envía sola,
+    // igual que los ejemplos.
+    preguntaBoton.addEventListener("click", function () {
+      campo.value = pregunta;
+      actualizarBoton();
+      campo.focus();
+    });
     var metaSpan = document.createElement("span");
     metaSpan.className = "historial-meta";
     metaSpan.textContent =
       (confianza === "alta" ? "Confianza alta" : "Confianza baja") +
       " · sim. " + (typeof similitudMaxima === "number"
         ? similitudMaxima.toFixed(3) : "—");
-    entrada.appendChild(preguntaSpan);
+    entrada.appendChild(preguntaBoton);
     entrada.appendChild(metaSpan);
     historialLista.insertBefore(entrada, historialLista.firstChild);
     // Tope de 20 entradas: la sesión no debe crecer sin límite.
@@ -490,6 +1038,17 @@
         campo.disabled = true;
       }
       actualizarBoton();
+      sincronizarCobertura(h);
+      // Enlace profundo: el índice ya está listo; si la URL
+      // traía una pregunta (?q=) o se pulsó un canario antes
+      // de que el estado llegara, se ejecuta sola (una vez).
+      if (preguntaPendiente && indiceListo && !campo.disabled) {
+        var pendiente = preguntaPendiente;
+        preguntaPendiente = null;
+        campo.value = pendiente;
+        actualizarBoton();
+        form.requestSubmit();
+      }
     })
     .catch(function () {
       estadoPunto.classList.add("error");
@@ -497,6 +1056,17 @@
     });
 
   campo.addEventListener("input", actualizarBoton);
+
+  // Ctrl+Intro (o Cmd+Intro) envía sin pulsar el botón: en un campo
+  // de varias líneas, Intro solo salta de línea.
+  campo.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (!boton.disabled) {
+        form.requestSubmit();
+      }
+    }
+  });
 
   // Los ejemplos rellenan el campo y dejan el botón listo para
   // enviar; no envían solos: el visitante ve la pregunta antes de
@@ -509,11 +1079,69 @@
     });
   });
 
+  limpiarHistorial.addEventListener("click", function () {
+    historialLista.innerHTML = "";
+    historial.hidden = true;
+  });
+
+  // Los botones «Probar» del mapa de cobertura lanzan la pregunta
+  // medida tal cual: a diferencia de los ejemplos, aquí la pregunta
+  // ya está visible en la tabla, así que enviarla directa es lo que
+  // el visitante espera. Si el índice aún no está listo, la pregunta
+  // queda pendiente y se lanza en cuanto el estado lo permite.
+  canarios.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var pregunta = b.getAttribute("data-pregunta") || "";
+      if (!pregunta) return;
+      campo.value = pregunta;
+      actualizarBoton();
+      if (indiceListo && !campo.disabled && !boton.disabled) {
+        form.requestSubmit();
+      } else {
+        preguntaPendiente = pregunta;
+      }
+      campo.focus();
+    });
+  });
+
+  copiarEnlace.addEventListener("click", function () {
+    if (!preguntaActual) return;
+    var enlace = window.location.origin + window.location.pathname +
+      "?q=" + encodeURIComponent(preguntaActual);
+    function listo() {
+      copiarNota.textContent =
+        "Enlace copiado — al abrirlo, la pregunta se ejecuta sola.";
+    }
+    function fallo() {
+      copiarNota.textContent = "No se pudo copiar automáticamente; " +
+        "copia la URL de la barra del navegador.";
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(enlace).then(listo, fallo);
+    } else {
+      var aux = document.createElement("textarea");
+      aux.value = enlace;
+      document.body.appendChild(aux);
+      aux.select();
+      try { document.execCommand("copy"); listo(); }
+      catch (e) { fallo(); }
+      document.body.removeChild(aux);
+    }
+  });
+
   form.addEventListener("submit", function (evento) {
     evento.preventDefault();
     var pregunta = campo.value.trim();
     if (!pregunta) return;
+    // El selector solo ofrece 1–8, pero se valida igual: si el valor
+    // no es un número en rango, cae al 4 de siempre (la API además
+    // lo ajusta al rango 1–8).
+    var kValor = parseInt(kSelect.value, 10);
+    if (isNaN(kValor) || kValor < 1 || kValor > 8) kValor = 4;
     ocultarError();
+    preguntaActual = pregunta;
+    copiarNota.textContent = "";
+    actualizarEnlace(pregunta);
     resultado.hidden = true;
     boton.disabled = true;
     boton.textContent = "Buscando…";
@@ -521,7 +1149,7 @@
     fetch("/preguntar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pregunta: pregunta })
+      body: JSON.stringify({ "pregunta": pregunta, "k": kValor })
     })
       .then(function (resp) {
         return resp.json().then(function (cuerpo) {
@@ -548,7 +1176,7 @@
         var html = "";
         if (fuentes.length > 0) {
           html += "<h2>Fuentes</h2>";
-          fuentes.forEach(function (f) {
+          fuentes.forEach(function (f, indice) {
             html += '<div class="fuente">' +
               '<div class="fuente-cabecera">' +
               '<span class="fuente-num">[' + escapar(f.n) + "]</span>" +
@@ -558,6 +1186,8 @@
               escapar(desgloseRelevancia(f)) + "</span>" +
               "</div>" +
               '<p class="fuente-texto">' + escapar(f.fragmento) + "</p>" +
+              '<p class="fuente-porque"><strong>Por qué esta fuente:</strong> ' +
+              escapar(porQueFuente(f, pregunta, indice + 1, fuentes.length)) + "</p>" +
               "</div>";
           });
         }

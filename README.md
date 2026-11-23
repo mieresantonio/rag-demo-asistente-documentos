@@ -23,8 +23,8 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
 .venv/bin/python refresh_corpus_extra.py   # corpus-extra/ al día (ver abajo)
-.venv/bin/python ingest.py ~/workspace/centeia-materiales \
-    ~/workspace/mundo-dirsi/aprendido ~/workspace/rag-demo/corpus-extra
+.venv/bin/python ingest.py     # ingiere las 3 carpetas por defecto
+                               # (ver «Corpus»); admite carpetas a medida
 .venv/bin/python app.py        # API en http://127.0.0.1:5057
 ```
 
@@ -34,6 +34,33 @@ y muestra la respuesta con sus fuentes citadas, la confianza y la
 similitud máxima; si el índice aún no existe, avisa y desactiva el
 formulario hasta que se ejecute la ingesta. La API de abajo sigue
 igual y es lo que usa la página.
+
+La página trae además tres preguntas de ejemplo clicables —«¿Qué es
+REA?», «¿Qué es blockchain y la web3?» y «¿Qué es el segundo yo 24/7
+de CenteIA?»— que rellenan el campo sin enviar solas (el visitante ve
+la pregunta y puede editarla antes de lanzarla); un historial de la
+sesión con cada pregunta hecha, su confianza y su similitud máxima
+—solo vive en la página, se borra al recargar, guarda como mucho 20
+entradas con la más reciente arriba, y pulsar una pregunta la vuelve
+a poner en el campo—; un selector de fuentes por respuesta (1–8, 4
+por defecto, el mismo `k` de la API); el botón «Limpiar historial»
+para vaciar la lista; y el atajo Ctrl+Intro (o Cmd+Intro) para enviar
+sin pulsar el botón.
+
+Cada respuesta tiene su **enlace compartible**: abre la página con
+`?q=tu-pregunta` y la pregunta se ejecuta sola al cargar; al
+preguntar, la URL se actualiza con la pregunta actual y el botón
+«Copiar enlace» de cada respuesta copia ese enlace. La sección
+**«Qué puedo responder»** muestra el mapa de cobertura: los 28
+documentos con sus fragmentos, sus secciones y su pregunta medida
+clicable («Probar» la lanza tal cual se midió). Y cada fuente trae
+su línea **«Por qué esta fuente»**: en lenguaje llano, por qué ese
+fragmento fue recuperado (parecido de significado + términos
+compartidos con la pregunta), a partir de los datos que la API ya
+devuelve. El mapa es estático por documento (se regenera con
+`generar-mapa-cobertura.py` tras cada re-ingesta) y sus conteos se
+contrastan en vivo con `/api/health`: si el índice cargado trae
+otros números, la página lo avisa.
 
 El arranque de `app.py` no es instantáneo: antes de aceptar peticiones
 carga el modelo de embeddings en memoria (medido el 2026-11-02:
@@ -89,7 +116,9 @@ Dos notas de arranque que no se ven en los comandos de arriba:
   `.gitignore`); el clon trae `data/chunks.json` y `data/meta.json`,
   pero hasta que no se ejecute la ingesta la API responde como se
   describe arriba: `sin_indice` en `/api/health` y `503` en
-  `/preguntar`.
+  `/preguntar`. Quien despliegue debe regenerar el índice en el
+  propio servidor con `ingest.py` (la guía de despliegue,
+  `DESPLIEGUE.md`, detalla este paso).
 - **Todos los errores llegan en JSON**, con la forma
   `{"error": "..."}`: también la ruta desconocida (`404`), el método
   no permitido en una ruta (`405`, que además lleva la cabecera
@@ -215,6 +244,10 @@ fuentes); la «regla de tres» y la calibración reciben hoy
 falsos positivos con confianza alta desde documentos vecinos.
 
 La ingesta acepta carpetas a medida: `python ingest.py carpeta1 carpeta2`.
+Sin argumentos, `ingest.py` usa las tres carpetas por defecto: los
+materiales de CenteIA, las notas de mundo-dirsi y `corpus-extra/`
+(esta última vive dentro del repo, así que un clon recién hecho ya
+la trae; desde el Ciclo 15 forma parte de las carpetas por defecto).
 Formatos: Markdown (`.md`, troceado respetando encabezados) y PDF (`.pdf`,
 una sección por página).
 
@@ -274,7 +307,14 @@ Piezas:
 | `refresh_corpus_extra.py` | Refresca `corpus-extra/` desde los registros originales (copia por app, verificación MD5) |
 | `app.py` | API Flask + interfaz web: `GET /`, `GET /api/health`, `POST /preguntar` |
 | `templates/index.html` | La interfaz web: una sola página autocontenida, sin recursos externos |
-| `tests_regresion_api.py` | Suite de regresión de la API: 56 comprobaciones (ver abajo) |
+| `wsgi.py` | Entrada WSGI para servir la app con gunicorn o PythonAnywhere (ver `DESPLIEGUE.md`) |
+| `DESPLIEGUE.md` | Guía de despliegue: requisitos, regeneración del índice y puesta en marcha |
+| `generar-mapa-cobertura.py` | Genera el mapa de cobertura de la interfaz desde `data/chunks.json` (28 preguntas medidas; falla si el corpus cambia sin actualizar la tabla) |
+| `tests_regresion_api.py` | Suite de regresión de la API: 76 comprobaciones (ver abajo) |
+| `evaluacion_canario.py` | Evaluación canario: 15 preguntas fijas con respuestas esperadas; detecta regresiones en la honestidad medida (ver «Evaluación canario y CI») |
+| `canario.json` | Las preguntas canario y sus valores medidos (similitud, documento en 1.ª posición) sobre el corpus del Ciclo 14 |
+| `rebuild_index.py` | Reconstruye `data/index.faiss` desde `data/chunks.json` versionado (lo usa la CI; sin re-ingerir el corpus) |
+| `.github/workflows/ci.yml` | CI: suite + canario en cada push y PR a `main` |
 | `data/` | Índice FAISS (generado por la ingesta, no versionado), fragmentos y metadatos |
 
 La suite de regresión levanta la app en un puerto libre y
@@ -283,7 +323,7 @@ bajo umbral, validación de entradas, errores en JSON, límites
 de `k`, interfaz web) y que `data/` queda intacta tras correr:
 
 ```bash
-.venv/bin/python tests_regresion_api.py   # 56 comprobaciones
+.venv/bin/python tests_regresion_api.py   # 76 comprobaciones
 ```
 
 Cada ciclo de refresco actualiza sus conteos esperados
@@ -383,9 +423,45 @@ registro de mejoras anota el resultado de cada corrida.
    examina todos los fragmentos, viable a esta escala de demo).
 3. Re-troceado adaptativo y metadatos por página en PDF.
 4. Evaluación con un set fijo de preguntas/respuestas esperadas.
+   Hecho en el Ciclo 16: `evaluacion_canario.py` + `canario.json`
+   (15 preguntas medidas sobre el corpus de 28 documentos / 572
+   fragmentos) y CI en cada push (ver «Evaluación canario y CI»).
 5. Despliegue (p. ej. PythonAnywhere). La interfaz web mínima ya existe
    desde el 2026-11-16 (`GET /`, una sola página autocontenida que
-   pregunta y muestra respuesta + fuentes); queda el despliegue.
+   pregunta y muestra respuesta + fuentes); la guía de despliegue está
+   en `DESPLIEGUE.md` (con la entrada WSGI en `wsgi.py`) y el primer
+   despliegue en un servidor queda pendiente de ejecutar.
+
+## Evaluación canario y CI
+
+La honestidad de la demo se vigila sola desde el Ciclo 16. La
+evaluación canario (`evaluacion_canario.py`, preguntas en
+`canario.json`) pregunta 15 preguntas fijas con respuestas
+esperadas medidas contra el corpus del Ciclo 14 (28 documentos /
+572 fragmentos): 12 que la demo debe responder con confianza alta
+y el documento esperado en 1.ª posición, y 3 que NO debe responder
+(clima, capital de Francia y una plantilla con huecos: confianza
+baja, cero fuentes). Cada pregunta «sabe» pasa si su similitud no
+cae más de 0,03 por debajo de la medida ni bajo la puerta de
+claridad (0,50); el canario también comprueba que las citas `[n]`
+del texto coinciden una a una con las fuentes devueltas.
+
+```bash
+.venv/bin/python evaluacion_canario.py            # 87 comprobaciones
+.venv/bin/python evaluacion_canario.py --reporte  # solo mide, no afirma
+```
+
+Si el corpus cambió (huella MD5 de `data/chunks.json` distinta de
+la registrada), el canario no bendice las cifras viejas: salta las
+bandas de similitud y pide recalibrar. La recalibración es manual:
+se corre `--reporte`, se revisan los valores nuevos a mano y se
+actualiza `canario.json` (valores + huella).
+
+La CI (`.github/workflows/ci.yml`) corre la suite de regresión y
+el canario en cada push y PR a `main`. Como el índice FAISS no
+está versionado, la CI lo reconstruye con `rebuild_index.py`
+desde `data/chunks.json` versionado: prueba el corpus completo,
+sin necesitar las carpetas del corpus que viven fuera del repo.
 
 ## Stack
 

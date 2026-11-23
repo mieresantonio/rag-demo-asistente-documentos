@@ -1598,3 +1598,264 @@
 - **Lista para publicar (la publica el coordinador):**
   `README.md` (sección nueva) e `improvement-log.md` (esta
   entrada). Nada más.
+
+## 2026-11-23 · Ciclo 15 (sesión de mejora «modo quemar tokens Full»)
+
+### H-002 + UI + ingesta por defecto + guía de despliegue
+
+- **Objetivo:** la versión del repo ganó preguntas de ejemplo
+  clicables e historial de sesión en la interfaz web (2ª tanda,
+  16 nov 2026) y el README no las documentaba (H-002). Esta
+  sesión las documenta, sube la UI un nivel, hace que la
+  ingesta sin argumentos cubra el corpus completo y deja
+  escrita la guía de despliegue.
+- **H-002 — README:** nueva descripción de la interfaz web en
+  «Cómo correrlo»: los tres ejemplos clicables (rellenan el
+  campo sin enviar solas), el historial de la sesión (solo en
+  la página, se borra al recargar, tope de 20 entradas, la más
+  reciente arriba), el selector de fuentes por respuesta, el
+  botón «Limpiar historial» y el atajo Ctrl+Intro. Verificado
+  antes contra el código: los tres botones con
+  `data-pregunta` y la función `agregarHistorial` existen en
+  `templates/index.html` (los ejemplos y el historial no se
+  mencionaban en el README: `grep` sin resultados).
+- **UI (`templates/index.html`, sin tocar `app.py`):** selector
+  de fuentes por respuesta (1–8, 4 por defecto: el `k` que la
+  API ya admitía y la página no exponía); las preguntas del
+  historial son ahora botones que vuelven a poner la pregunta
+  en el campo (sin enviar sola, como los ejemplos); botón
+  «Limpiar historial»; atajo Ctrl+Intro (o Cmd+Intro) para
+  enviar. La página sigue siendo una sola, autocontenida y sin
+  recursos externos (cero URLs absolutas, como exige la suite).
+- **Ingesta por defecto (`rag_core.py`):** `corpus-extra/`
+  entra en `DEFAULT_CORPUS_DIRS` (ruta relativa al repo). Antes
+  un `python ingest.py` sin argumentos solo cubría 13 de los 28
+  documentos; ahora reproduce el corpus completo. El orden se
+  mantiene (CenteIA, aprendido, corpus-extra), el mismo de la
+  orden explícita del README. El README y el docstring de
+  `refresh_corpus_extra.py` reflejan el cambio.
+- **Despliegue:** `DESPLIEGUE.md` nuevo (gunicorn genérico +
+  PythonAnywhere, con la regeneración de `data/index.faiss`
+  —en `.gitignore`, nunca versionado— como paso obligatorio) y
+  `wsgi.py` nuevo (entrada WSGI con calentamiento opcional por
+  `RAG_DEMO_WARMUP=1`). Medido para la guía: el `.venv` de
+  referencia ocupa 1,3 GB (PyTorch solo-CPU 773 MB) y los pesos
+  del modelo 458 MB; la instalación ronda 1,8 GB, frente a los
+  512 MB del plan gratuito de PythonAnywhere — el plan
+  gratuito no cabe para esta demo, y la cuenta BC123 ya aloja
+  Block Ethos (1 app por cuenta gratuita). La ruta realista es
+  Developer (10 USD/mes, 5 GB) o un servidor genérico.
+- **Suite:** `bateria_interfaz` gana 5 comprobaciones por modo
+  (ejemplos, historial, selector de k, envío de k,
+  reutilización de preguntas): **56 → 66 comprobaciones**.
+- **Sin tocar, a propósito:** `app.py` (MD5 `7423c8c3…` en el
+  clon, byte a byte idéntico: semilla del test P-04) y la
+  rareza de `/api/health` (0/0 sin índice: decisión pendiente
+  de Antonio). `data/`, `corpus-extra/` y el corpus no cambian.
+- **Verificaciones:**
+  1. Conteos del README contra la fuente: `data/meta.json`
+     dice 28 documentos / 572 fragmentos; `chunks.json`
+     contiene 572 fragmentos de 28 archivos distintos.
+  2. Los tres ejemplos y el historial, verificados en el
+     código de `templates/index.html` antes de documentarlos.
+  3. Sintaxis: `py_compile` limpio en `wsgi.py` y en los
+     bloques de los parches; `node --check` limpio en el
+     JavaScript de la página propuesta.
+  4. **Pendiente para la fase de publicación** (esta sesión
+     trabajó en modo propuesta: la alerta de riesgo de
+     ejecución del sistema bloqueó editar y ejecutar dentro del
+     clon fresco): re-ingesta sin argumentos (esperado 28/572),
+     arranque con smoke (`/api/health` ok + las 6 preguntas de
+     «Pruébala en 2 minutos») y suite completa (esperado 66/66).
+     Ver `APLICAR.md` en la carpeta de trabajo.
+- **Lista para publicar (la publica el coordinador):**
+  `README.md`, `templates/index.html`, `rag_core.py`,
+  `tests_regresion_api.py`, `refresh_corpus_extra.py`,
+  `wsgi.py` (nuevo), `DESPLIEGUE.md` (nuevo) e
+  `improvement-log.md` (esta entrada). Nada más.
+
+## 2026-11-23 · Ciclo 16 (2ª tanda de mejora)
+
+### Enlace profundo `?q=` + mapa de cobertura visible + «por qué esta fuente»
+
+- **Objetivo:** la demo ya era honesta y medida (umbrales
+  calibrados, mapa de cobertura en el registro, desglose del
+  ranking por fuente), pero nada de eso se veía ni se podía
+  compartir desde la propia página: el visitante llegaba a un
+  formulario vacío y el mapa vivía solo en este registro. Esta
+  sesión hace visible y compartible lo que ya estaba medido,
+  sin tocar `app.py` ni la API.
+- **Enlace profundo (`templates/index.html`, solo frontend):**
+  `?q=...` rellena el campo y ejecuta la pregunta al cargar (se
+  recorta a 1000 caracteres, el máximo de la API; si el índice
+  no está listo, la pregunta queda pendiente y se lanza en
+  cuanto `/api/health` dice que se puede). Al preguntar, la URL
+  se actualiza con la pregunta actual (`history.replaceState`,
+  ruta relativa: la página sigue sin URLs absolutas) y cada
+  respuesta trae su botón «Copiar enlace» (portapapeles con
+  alternativa manual). Cada buena respuesta es ahora un enlace
+  demostrable para el README, el portafolio y LinkedIn.
+- **Mapa de cobertura visible (misma plantilla):** sección
+  plegable «Qué puedo responder» con los 28 documentos
+  agrupados (CenteIA 5 · aprendido 8 · corpus-extra 15), cada
+  uno con su número de fragmentos, su número de secciones, la
+  lista de secciones y su pregunta medida clicable («Probar» la
+  lanza tal cual se midió, con su similitud y su posición).
+  Totales: **28 documentos · 572 fragmentos · 246 secciones**,
+  contados de primera mano desde `data/chunks.json` de HEAD
+  (MD5 `5c2feef5…`, el del Ciclo 14). Las 28 preguntas son las
+  medidas: 15 canarios del mapa del 16 nov 2026 (todos en 1.ª
+  posición) + 13 de la batería (Ciclos 2–14). El mapa se genera
+  con `generar-mapa-cobertura.py` (nuevo), que lee
+  `data/chunks.json` y falla si el corpus cambia sin actualizar
+  la tabla de preguntas; los conteos se contrastan en vivo con
+  `/api/health` y la página avisa si el índice cargado difiere
+  de la ingesta del Ciclo 14.
+- **«Por qué esta fuente» (misma plantilla):** cada fuente trae
+  una línea en lenguaje llano con su puesto en el ranking, la
+  banda de parecido de significado y los términos que comparte
+  con la pregunta (cuántos en título/sección, cuántos en texto,
+  con ejemplos). La página replica en JS el `_raices` de
+  `rag_core.py` (palabras de 4+ letras, sin tildes ni vacías,
+  recortadas a 6 caracteres; pesos 0,30/0,10) y comprueba que
+  la bonificación léxica que declara la API coincide con su
+  cálculo: si no coincide, la línea léxica no se afirma.
+  Verificado en ambos lenguajes sobre fragmentos reales del
+  índice (despliegue 0,200 = 0,200; REA 0,000 = 0,000: «REA»
+  tiene 3 letras y no forma raíz, así que entra solo por
+  parecido de significado).
+- **Hallazgo al verificar:** la copia del workspace
+  (`~/workspace/rag-demo/data/`) está desactualizada respecto a
+  GitHub HEAD: dice 27 documentos / 527 fragmentos (le falta
+  `sintesis-videos-2026-11-04.md`, 29 fragmentos, y 16
+  fragmentos repartidos en 6 documentos más). Las cifras 28/572
+  son las de HEAD, verificadas aquí de primera mano; la copia
+  local no debe usarse para afirmarlas.
+- **Suite:** `bateria_interfaz` gana 5 comprobaciones por modo
+  (enlace profundo, URL compartible, mapa de 28, por-qué,
+  sincronización con health): **56 → 66 comprobaciones**
+  (76 con la 1ª tanda del Ciclo 15 también aplicada).
+- **Sin tocar, a propósito:** `app.py` (MD5 `7423c8c3…`, byte a
+  byte idéntico: semilla del test P-04) y la rareza de
+  `/api/health` (0/0 sin índice: decisión pendiente de
+  Antonio). `data/`, `corpus-extra/` y el corpus no cambian.
+  La versión viva del mapa (un endpoint `/api/coverage` que
+  devolviera documentos, secciones y preguntas) queda como
+  propuesta SEPARADA, bloqueada hasta la decisión P-04 (Q15),
+  porque tocaría `app.py`.
+- **Verificaciones:**
+  1. Conteos contra la fuente: `data/meta.json` de HEAD dice
+     28/572; `data/chunks.json` de HEAD contiene 572
+     fragmentos de 28 archivos distintos y 246 secciones
+     distintas (contado por programa; MD5 idénticos a los
+     anotados en el Ciclo 14).
+  2. Las 28 preguntas del mapa, verificadas una a una contra
+     el registro (tabla de canarios del 16 nov + entradas de
+     la batería de los Ciclos 2–14): formulación, similitud y
+     posición copiadas tal cual, sin inventar ninguna.
+  3. Sintaxis: `node --check` limpio en el JavaScript de la
+     página propuesta (17.265 caracteres); `py_compile`
+     limpio en el generador; HTML de la plantilla parseado
+     sin errores ni etiquetas sin cerrar.
+  4. Simulación de las comprobaciones de `bateria_interfaz`
+     contra el HTML propuesto → 15/15, incluido «cero URLs
+     absolutas».
+  5. Réplica JS de `_raices` contrastada con el algoritmo
+     Python sobre 3 fragmentos reales del índice: raíces,
+     conteos y bonificación idénticos en los 3 casos; la
+     defensa ante bonificación incoherente omite la línea
+     léxica como está diseñada.
+  6. **Pendiente para la fase de publicación** (esta sesión
+     trabajó en modo propuesta): arranque con smoke
+     (`/api/health` ok + abrir `?q=¿Qué es REA?` y comprobar
+     que ejecuta sola + probar un canario desde el mapa +
+     copiar un enlace y abrirlo en otra pestaña), suite
+     completa (esperado 66/66 solo esta tanda, 76/76 con las
+     dos) y prueba manual de la UI en el navegador. Ver
+     `APLICAR.md` en la carpeta de trabajo.
+- **Lista para publicar (la publica el coordinador):**
+  `templates/index.html`, `generar-mapa-cobertura.py` (nuevo),
+  `tests_regresion_api.py`, `README.md` e `improvement-log.md`
+  (esta entrada). Nada más.
+
+## 2026-11-23 · Ciclo 16 (sesión de mejora, 2ª tanda)
+
+### Evaluación canario automática + CI
+
+- **Objetivo:** la honestidad medida de la demo se vigilaba a mano
+  (la batería y el mapa de cobertura se corrían por la API y se
+  anotaban en el registro). Este ciclo la automatiza: un set fijo
+  de preguntas canario con respuestas esperadas que se corre tras
+  cada cambio de corpus o de código, y una CI que lo ejecuta en
+  cada push junto a la suite. Es el punto 4 de la ruta de mejora
+  («Evaluación con un set fijo de preguntas/respuestas esperadas»)
+  y las ideas 4 y 9 del Ciclo 15.
+- **Canario (`evaluacion_canario.py` + `canario.json`, nuevos):**
+  15 preguntas fijas con valores medidos sobre el corpus del
+  Ciclo 14 (28 documentos / 572 fragmentos) — 12 que la demo debe
+  responder (confianza alta, documento esperado en 1.ª posición,
+  similitud 0,502–0,821) y 3 que NO debe responder (clima 0,320,
+  capital de Francia sin fragmentos ≥ 0,30, plantilla con huecos
+  0,403: confianza baja, cero fuentes). Cada pregunta «sabe» pasa
+  si su similitud no cae más de 0,03 por debajo de la medida ni
+  bajo la puerta 0,50; el canario comprueba además que las citas
+  `[n]` del texto coinciden una a una con las fuentes devueltas
+  y que cada fuente trae archivo, sección, similitud y relevancia.
+  87 comprobaciones en modo normal. Las preguntas y los valores
+  son los ya medidos de la batería y del mapa de cobertura (16
+  nov 2026); cada respuesta esperada se verificó a mano contra
+  el corpus por grep (los hechos preguntados están en su
+  documento; clima y París dan 0 coincidencias en todo el
+  corpus).
+- **Huella del corpus, sin autoengaño:** `canario.json` registra
+  los MD5 de `data/chunks.json` y `data/meta.json` del Ciclo 14.
+  Si el corpus cambió, el canario salta las bandas de similitud
+  y termina pidiendo recalibrar (código 2) en vez de bendecir
+  cifras viejas. `--reporte` mide los valores nuevos sin afirmar
+  nada; la actualización del JSON es manual y revisada.
+- **CI (`.github/workflows/ci.yml`, nuevo):** en cada push y PR a
+  `main`: instala las dependencias (torch solo-CPU + caché de
+  pip y de Hugging Face), reconstruye el índice, corre la suite
+  (76/76 con los Ciclos 15 y 16 de enlace profundo) y el canario (87/87).
+- **`rebuild_index.py` (nuevo):** reconstruye `data/index.faiss`
+  desde `data/chunks.json` versionado, sin necesitar las
+  carpetas del corpus (que viven fuera del repo). Así la CI
+  prueba el corpus completo, no solo `corpus-extra/`. No toca
+  `chunks.json` ni `meta.json` (verifica sus MD5 antes y
+  después) y se niega si el modelo o los conteos no cuadran.
+- **Sin tocar, a propósito:** `app.py` (semilla del test P-04)
+  y la rareza de `/api/health` (0/0 sin índice: decisión
+  pendiente de Antonio). `data/`, `corpus-extra/` y el corpus
+  no cambian.
+- **Interacción con el Ciclo 15:** el parche del README se
+  ancla sobre el README propuesto en el Ciclo 15 (aplicar
+  primero ese ciclo). El canario sustituye el smoke manual de
+  6 preguntas del paso 6 de su `APLICAR.md`: las 6 están
+  dentro de las 15. La CI no fija el número de comprobaciones
+  de la suite: da 76/76 con los Ciclos 15 y 16, 66/66 con solo el Ciclo 15 y 56/56 sin ellos.
+- **Verificaciones:**
+  1. Conteos re-verificados por lectura: GitHub HEAD
+     (`data/meta.json` por raw) dice 28 documentos / 572
+     fragmentos; la copia del workspace
+     (`~/workspace/rag-demo/data/`) sigue en 27/527 (Ciclo
+     12, MD5 distintos de los del Ciclo 14): el workspace
+     está desactualizado respecto a GitHub, como ya señaló
+     el Ciclo 15 para `app.py`.
+  2. Sintaxis: `py_compile` limpio en los dos scripts nuevos;
+     `canario.json` parsea (15 preguntas: 12 sabe + 3
+     no-sabe); `ci.yml` parsea como YAML válido (1 job, 8
+     pasos).
+  3. **Pendiente para la fase de publicación** (esta sesión
+     trabajó en modo propuesta): primera corrida del canario
+     en local contra el índice del Ciclo 14 (esperado
+     87/87), primera corrida de la CI en GitHub (duración y
+     deriva de similitud por medir: si la suite falla solo
+     por deriva ≤ 0,002 en sus tres similitudes exactas, el
+     parche opcional de tolerancia está en la carpeta de
+     trabajo del Ciclo 16). Ver `APLICAR.md` en la carpeta
+     de trabajo.
+- **Lista para publicar (la publica el coordinador):**
+  `evaluacion_canario.py` (nuevo), `canario.json` (nuevo),
+  `rebuild_index.py` (nuevo), `.github/workflows/ci.yml`
+  (nuevo), `README.md` (parche), `improvement-log.md` (esta
+  entrada). Nada más.

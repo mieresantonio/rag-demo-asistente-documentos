@@ -20,9 +20,19 @@ META_PATH = os.path.join(DATA_DIR, "meta.json")
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 # Carpetas del corpus por defecto (materiales propios de Antonio).
+# La tercera, corpus-extra/, vive DENTRO de este repo: es la copia de
+# los improvement-log que mantiene refresh_corpus_extra.py. Antes solo
+# estaban las dos primeras y corpus-extra solo entraba si se pasaba a
+# mano en la línea de comandos, así que un `python ingest.py` sin
+# argumentos dejaba fuera 15 de los 28 documentos. Ahora la ingesta
+# sin argumentos reproduce el corpus completo (28 documentos, 572
+# fragmentos en el Ciclo 14). collect_chunks ignora las carpetas que
+# no existen, así que en una máquina sin las dos primeras la ingesta
+# sigue cubriendo los 15 documentos de corpus-extra.
 DEFAULT_CORPUS_DIRS = [
     os.path.expanduser("~/workspace/centeia-materiales"),
     os.path.expanduser("~/workspace/mundo-dirsi/aprendido"),
+    os.path.join(BASE_DIR, "corpus-extra"),
 ]
 
 CHUNK_CHARS = 900      # tamaño objetivo de cada fragmento
