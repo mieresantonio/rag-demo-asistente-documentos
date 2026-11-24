@@ -185,6 +185,22 @@ Si alguna cifra cambia en un refresco futuro, es una regresión
 o una mejora medible, no un error del ejemplo: el registro de
 mejoras anota la calibración de cada ciclo.
 
+## Pruébalo: 5 preguntas
+
+Sin `curl`: con el servidor levantado, cada enlace abre la página
+y ejecuta la pregunta sola (enlace profundo `?q=`, ver «Cómo
+correrlo»). Las cinco son preguntas medidas del mapa de cobertura
+y del canario: cada una recupera su documento en 1.ª posición con
+confianza alta sobre el corpus del Ciclo 14 (28 documentos, 572
+fragmentos). Si el servidor corre en otro puerto o dominio, cambia
+solo la base del enlace; la pregunta viaja igual en `?q=`.
+
+1. [¿Qué es un agente de código en la práctica?](http://127.0.0.1:5057/?q=%C2%BFQu%C3%A9%20es%20un%20agente%20de%20c%C3%B3digo%20en%20la%20pr%C3%A1ctica%3F) — la respuesta más fuerte de la demo (similitud 0,821): qué hace un agente de código y dónde está su límite. Fuente: `mundo-dirsi/aprendido/agentes-e-ia.md`.
+2. [¿Qué es blockchain y la web3?](http://127.0.0.1:5057/?q=%C2%BFQu%C3%A9%20es%20blockchain%20y%20la%20web3%3F) — similitud 0,799, las 4 fuentes de `mundo-dirsi/aprendido/blockchain-web3.md`: Block Ethos, las 10 apps web3 y los principios que quedan.
+3. [¿Qué automatizaciones presenta la guía de CenteIA y cómo se venden?](http://127.0.0.1:5057/?q=%C2%BFQu%C3%A9%20automatizaciones%20presenta%20la%20gu%C3%ADa%20de%20CenteIA%20y%20c%C3%B3mo%20se%20venden%3F) — similitud 0,699, las 4 fuentes de `centeia-materiales/automatizaciones-analisis.md`: las 5 automatizaciones en Make.com, a quién se venden y a qué precio.
+4. [¿Qué corrigió gas-calc sobre el wei exacto y EIP-1559?](http://127.0.0.1:5057/?q=%C2%BFQu%C3%A9%20corrigi%C3%B3%20gas-calc%20sobre%20el%20wei%20exacto%20y%20EIP-1559%3F) — similitud 0,710, las 4 fuentes del registro de mejora de gas-calc: el wei exacto con `BigInt`, las magnitudes corregidas y el modelo EIP-1559.
+5. [¿Los 45 prompts son un subconjunto de los 90 prompts?](http://127.0.0.1:5057/?q=%C2%BFLos%2045%20prompts%20son%20un%20subconjunto%20de%20los%2090%20prompts%3F) — similitud 0,669, las 4 fuentes de `mundo-dirsi/aprendido/comparacion-prompts-45-vs-90.md`: la comparación prompt a prompt (45 de 45 idénticos).
+
 ## Corpus
 
 Documentos propios de Antonio, ya existentes en su workspace
